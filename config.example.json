@@ -1,0 +1,17 @@
+{
+  "token": "xoxp-YOUR-TOKEN-HERE",
+  "statuses": [
+    {"title": "Clear status",        "emoji": "",                        "text": ""},
+    {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting"},
+    {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing"},
+    {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break"},
+    {"title": "Out sick",            "emoji": ":face_with_thermometer:", "text": "Out sick"},
+    {"title": "Vacationing",         "emoji": ":palm_tree:",             "text": "Vacationing"},
+    {"title": "Working from home",   "emoji": ":house:",                 "text": "Working from home"},
+    {"title": "Do not disturb",      "emoji": ":no_entry_sign:",         "text": "Do not disturb"},
+    {"title": "Commuting",           "emoji": ":bus:",                   "text": "Commuting"},
+    {"title": "Coffee break",        "emoji": ":coffee:",                "text": "Coffee break"},
+    {"title": "On a call",           "emoji": ":telephone_receiver:",    "text": "On a call"},
+    {"title": "Be right back",       "emoji": ":brb:",                   "text": "Be right back"}
+  ]
+}
