@@ -66,7 +66,7 @@ def do_setup():
 
 
 def main():
-    arg = sys.stdin.read().strip()
+    arg = sys.argv[1].strip() if len(sys.argv) > 1 else ""
 
     if arg == "setup":
         do_setup()
