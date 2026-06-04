@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -10,7 +11,30 @@ from common import (
     DEFAULT_STATUSES, with_icon, compute_expiry_from_config, parse_custom_status,
     split_submenu_query, build_expiry_submenu, build_remove_confirm_submenu,
     build_token_submenu, build_setup_item, build_token_error_item,
+    search_emoji,
 )
+
+# Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
+_EMOJI_TRIGGER = re.compile(r':([a-z0-9_+\-]+)$', re.IGNORECASE)
+
+
+def _build_emoji_suggestions(raw, fragment):
+    """Return Alfred items for :fragment emoji suggestions."""
+    prefix  = raw[: raw.rfind(":" + fragment)]
+    matches = search_emoji(fragment)
+    items   = []
+    for code, char in matches:
+        full_query = f"{prefix}:{code}: "
+        item = {
+            "title":        f":{code}:",
+            "subtitle":     char if char else "custom workspace emoji",
+            "autocomplete": full_query,
+            "valid":        False,
+        }
+        if char:
+            item = with_icon(item, char)
+        items.append(item)
+    return items
 
 
 def main():
@@ -51,11 +75,19 @@ def main():
         print(json.dumps({"items": items}))
         return
 
-    items = []
-
     if os.path.exists(TOKEN_ERROR_FLAG):
         print(json.dumps({"items": [build_token_error_item()]}))
         return
+
+    # Emoji suggestion mode — trailing :fragment triggers inline emoji search
+    emoji_m = _EMOJI_TRIGGER.search(raw)
+    if emoji_m:
+        suggestions = _build_emoji_suggestions(raw, emoji_m.group(1))
+        if suggestions:
+            print(json.dumps({"items": suggestions}))
+            return
+
+    items = []
 
     # Clear status — hardcoded, no submenu
     if not query or query in "clear status":

@@ -48,6 +48,11 @@ symlink() {
 symlink "$SCRIPT_DIR/config.json" "$CONFIG_DIR/config.json"
 symlink "$SCRIPT_DIR/icons"       "$CONFIG_DIR/icons"
 
+# ── Emoji list ────────────────────────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}Emoji${RESET}"
+python3 "$SCRIPT_DIR/workflow/generate_emoji_list.py"
+echo ""
+
 # ── Icons ─────────────────────────────────────────────────────────────────────
 echo -e "${CYAN}${BOLD}Icons${RESET}"
 python3 "$SCRIPT_DIR/workflow/generate_icons.py"

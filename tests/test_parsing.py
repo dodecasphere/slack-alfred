@@ -377,5 +377,42 @@ class TestBuildTokenSubmenu(unittest.TestCase):
         self.assertFalse(items[0]["valid"])
 
 
+# ── search_emoji ──────────────────────────────────────────────────────────────
+
+class TestSearchEmoji(unittest.TestCase):
+
+    def test_prefix_match_returns_results(self):
+        results = wf.search_emoji("headphone")
+        codes = [r[0] for r in results]
+        self.assertIn("headphones", codes)
+
+    def test_char_provided_for_standard_emoji(self):
+        results = wf.search_emoji("headphone")
+        for code, char in results:
+            self.assertIsNotNone(char)
+            self.assertGreater(len(char), 0)
+
+    def test_limit_respected(self):
+        results = wf.search_emoji("s", limit=3)
+        self.assertLessEqual(len(results), 3)
+
+    def test_no_match_returns_empty(self):
+        results = wf.search_emoji("zzzznotarealemoji")
+        self.assertEqual(results, [])
+
+    def test_results_sorted_alphabetically(self):
+        results = wf.search_emoji("fire")
+        codes = [r[0] for r in results]
+        self.assertEqual(codes, sorted(codes))
+
+    def test_custom_emoji_yields_none_char(self):
+        # Patch _load_custom_emoji to inject a fake custom emoji
+        with mock.patch("common._load_custom_emoji", return_value={"zz_custom": "https://example.com/emoji.png"}):
+            results = wf.search_emoji("zz_custom")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], "zz_custom")
+        self.assertIsNone(results[0][1])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

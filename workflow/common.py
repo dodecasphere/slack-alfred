@@ -7,10 +7,14 @@ import sys
 import time
 from datetime import datetime, timedelta
 
-CONFIG_FILE      = os.path.expanduser("~/.config/slack-alfred/config.json")
-ICON_CACHE       = os.path.expanduser("~/.config/slack-alfred/icons")
-USAGE_FILE       = os.path.expanduser("~/.config/slack-alfred/usage.json")
-TOKEN_ERROR_FLAG = os.path.expanduser("~/.config/slack-alfred/token_error")
+CONFIG_FILE        = os.path.expanduser("~/.config/slack-alfred/config.json")
+ICON_CACHE         = os.path.expanduser("~/.config/slack-alfred/icons")
+USAGE_FILE         = os.path.expanduser("~/.config/slack-alfred/usage.json")
+TOKEN_ERROR_FLAG   = os.path.expanduser("~/.config/slack-alfred/token_error")
+CUSTOM_EMOJI_CACHE = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
+
+_EMOJI_LIST_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "emoji.json")
+_CUSTOM_EMOJI_TTL = 86400  # 24 hours
 
 _AUTH_ERRORS    = {"invalid_auth", "token_revoked", "account_inactive", "not_authed"}
 
@@ -489,6 +493,65 @@ def record_usage(title):
         pass
 
 
+# ── Emoji search ─────────────────────────────────────────────────────────────
+
+def _load_standard_emoji():
+    try:
+        with open(_EMOJI_LIST_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _load_custom_emoji():
+    """Load cached custom emoji, firing an async refresh if the cache is stale."""
+    try:
+        with open(CUSTOM_EMOJI_CACHE) as f:
+            cache = json.load(f)
+        if time.time() - cache.get("fetched_at", 0) > _CUSTOM_EMOJI_TTL:
+            _refresh_custom_emoji_async()
+        return cache.get("emoji", {})
+    except (FileNotFoundError, json.JSONDecodeError):
+        _refresh_custom_emoji_async()
+        return {}
+
+
+def _refresh_custom_emoji_async():
+    fetch_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_emoji.py")
+    subprocess.Popen([sys.executable, fetch_script],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def search_emoji(fragment, limit=9):
+    """
+    Return up to `limit` emoji codes whose names start with `fragment`.
+    Each result is (code, char_or_None) — char is None for custom workspace emoji.
+    Standard emoji come first (they have renderable chars); custom fill remaining slots.
+    """
+    frag = fragment.lower()
+    standard = _load_standard_emoji()
+    custom   = _load_custom_emoji()
+
+    results = []
+    seen    = set()
+
+    for code in sorted(standard):
+        if code.startswith(frag):
+            results.append((code, standard[code]))
+            seen.add(code)
+            if len(results) >= limit:
+                return results
+
+    for code in sorted(custom):
+        if code.startswith(frag) and code not in seen:
+            results.append((code, None))
+            seen.add(code)
+            if len(results) >= limit:
+                break
+
+    return results
+
+
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
 SETUP_URL = "https://api.slack.com/apps"
@@ -499,7 +562,7 @@ def do_setup():
     steps = (
         "1. Create a new Slack app at api.slack.com/apps\\n"
         "2. From scratch → name it, pick your workspace\\n"
-        "3. OAuth & Permissions → User Token Scopes → add: users.profile:write  users:write\\n"
+        "3. OAuth & Permissions → User Token Scopes → add: users.profile:write  users:write  emoji:read\\n"
         "4. Install to Workspace → copy the xoxp- token\\n"
         "5. Return to Alfred → Tab this item → paste your token"
     )
