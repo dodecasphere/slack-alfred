@@ -67,8 +67,6 @@ sed "s/xoxp-YOUR-TOKEN-HERE/$token/" "$SCRIPT_DIR/config.example.json" > "$CONFI
 
 echo -e "  ${GREEN}✓${RESET}  Config written to ${BOLD}config.json${RESET}"
 echo ""
-echo -e "  ${DIM}Edit config.json in the repo any time to add or change your preset statuses.${RESET}"
-echo ""
 
 # ── Step 5: Build the workflow ────────────────────────────────────────────────
 echo -e "${CYAN}${BOLD}Step 5${RESET}  Building the Alfred workflow"
@@ -90,5 +88,6 @@ echo ""
 echo -e "${GREEN}${BOLD}All done!${RESET}"
 echo ""
 echo -e "  Type ${BOLD}slack${RESET} in Alfred to set your status."
-echo -e "  Edit ${BOLD}config.json${RESET} in the repo to customize your presets."
+echo -e "  Type a custom status and use ${BOLD}⌘↩${RESET} to save it as a preset."
+echo -e "  Right-arrow any preset to set expiry or remove it."
 echo ""

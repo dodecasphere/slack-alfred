@@ -29,7 +29,9 @@ To rebuild after changes:
 Type `slack` in Alfred.
 
 - **Enter** — set the selected status
-- **⌘Enter** on a custom status — save it as a preset in `config.json`
+- **⌘Enter** on a custom status — save it as a preset
+- **Right-arrow** any preset — set expiry or remove it
+- **⌘Enter** on an expiry option — update the preset's stored expiry
 
 ### Custom status syntax
 
@@ -56,22 +58,4 @@ slack 🧠 :brain: deep work until 5pm
 
 ## Config
 
-Everything lives in `config.json` at the repo root (gitignored — contains your token). `build.sh` symlinks it to `~/.config/slack-alfred/` so the workflow can find it.
-
-### Preset format
-
-```json
-{
-  "token": "xoxp-...",
-  "statuses": [
-    {"title": "Focusing", "emoji": ":headphones:", "text": "Focusing", "icon": "🎧", "expiry": "2h"},
-    {"title": "Standup",  "emoji": ":calendar:",   "text": "Standup",  "icon": "📅", "expiry": "9:30am"}
-  ]
-}
-```
-
-- `title` — shown in Alfred
-- `text` — the Slack status text
-- `emoji` — Slack emoji code shown next to your name (e.g. `:calendar:`)
-- `icon` — emoji shown in the Alfred menu
-- `expiry` — optional; duration (`2h`, `30m`) or time (`5pm`, `noon`) — re-computed from now each time the preset is loaded
+Presets are managed entirely from Alfred — no file editing needed. Your config lives at `~/.config/slack-alfred/config.json` (gitignored, contains your token).
