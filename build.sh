@@ -40,6 +40,10 @@ symlink "$SCRIPT_DIR/config.json" "$CONFIG_DIR/config.json"
 symlink "$SCRIPT_DIR/icons"       "$CONFIG_DIR/icons"
 echo ""
 
+# ── Icons ─────────────────────────────────────────────────────────────────────
+python3 "$SCRIPT_DIR/workflow/generate_icons.py"
+echo ""
+
 # ── Build ─────────────────────────────────────────────────────────────────────
 echo "Building workflow…"
 cd "$SCRIPT_DIR/workflow"

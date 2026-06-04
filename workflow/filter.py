@@ -37,16 +37,20 @@ rep.representationUsingTypeProperties(4,ObjC.wrap({})).writeToFileAtomically(out
 
 
 def icon_path(emoji_char):
-    """Return path to a cached PNG for emoji_char, generating it on first use."""
+    """Return the cached PNG path if it exists, otherwise kick off background generation."""
     if not emoji_char:
         return None
     name = "_".join(f"{ord(c):04X}" for c in emoji_char if ord(c) > 31)
     path = os.path.join(ICON_CACHE, f"{name}.png")
-    if not os.path.exists(path):
-        os.makedirs(ICON_CACHE, exist_ok=True)
-        jxa = _JXA.replace("EMOJI", json.dumps(emoji_char)).replace("OUTPATH", json.dumps(path))
-        subprocess.run(["osascript", "-l", "JavaScript", "-e", jxa], capture_output=True)
-    return path if os.path.exists(path) else None
+    if os.path.exists(path):
+        return path
+    # Not cached yet — generate in the background so this invocation stays fast.
+    # The icon will be ready by the next time Alfred re-runs the filter.
+    os.makedirs(ICON_CACHE, exist_ok=True)
+    jxa = _JXA.replace("EMOJI", json.dumps(emoji_char)).replace("OUTPATH", json.dumps(path))
+    subprocess.Popen(["osascript", "-l", "JavaScript", "-e", jxa],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return None
 
 
 def with_icon(item, emoji_char):
