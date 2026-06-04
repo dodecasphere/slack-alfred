@@ -312,6 +312,48 @@ class TestParseCustomStatus(unittest.TestCase):
         self.assertEqual(display, "")
 
 
+# ── extract_bracket_title ─────────────────────────────────────────────────────
+
+class TestExtractBracketTitle(unittest.TestCase):
+
+    def test_leading_bracket_extracted(self):
+        title, rest = wf.extract_bracket_title("[Beach day] :beach_with_umbrella: at the beach")
+        self.assertEqual(title, "Beach day")
+        self.assertEqual(rest, ":beach_with_umbrella: at the beach")
+
+    def test_no_bracket_returns_none(self):
+        title, rest = wf.extract_bracket_title(":headphones: focusing")
+        self.assertIsNone(title)
+        self.assertEqual(rest, ":headphones: focusing")
+
+    def test_bracket_title_trimmed(self):
+        title, rest = wf.extract_bracket_title("[  My Title  ] some text")
+        self.assertEqual(title, "My Title")
+        self.assertEqual(rest, "some text")
+
+    def test_bracket_not_at_start_ignored(self):
+        title, rest = wf.extract_bracket_title("some [Title] text")
+        self.assertIsNone(title)
+        self.assertEqual(rest, "some [Title] text")
+
+    def test_empty_bracket_not_extracted(self):
+        title, rest = wf.extract_bracket_title("[] some text")
+        self.assertIsNone(title)
+
+    def test_bracket_with_expiry_in_rest(self):
+        title, rest = wf.extract_bracket_title("[Focus block] :brain: deep work 2h")
+        self.assertEqual(title, "Focus block")
+        self.assertEqual(rest, ":brain: deep work 2h")
+
+    def test_parse_custom_status_after_bracket_strip(self):
+        _, raw = wf.extract_bracket_title("[My Status] :headphones: focusing for 2h")
+        icon, emoji, text, ts, display, cfg = _with_time(wf.parse_custom_status, raw)
+        self.assertEqual(icon, ":headphones:")
+        self.assertEqual(emoji, ":headphones:")
+        self.assertEqual(text, "focusing")
+        self.assertEqual(display, "expires in 2h")
+
+
 # ── _usage_score ──────────────────────────────────────────────────────────────
 
 class TestUsageScore(unittest.TestCase):
