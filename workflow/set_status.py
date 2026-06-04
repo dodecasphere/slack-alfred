@@ -49,24 +49,35 @@ def notify_error(detail=""):
     subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def notify_success(message):
-    script = f'display notification {json.dumps(message)} with title "Slack Status"'
-    subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def save_preset(status):
+    text  = status.get("text", "").strip()
+    icon  = status.get("icon", "\U0001f4ac").strip()
+    emoji = status.get("emoji", "").strip()
 
+    if not text:
+        notify_error("No status text to save.")
+        return
 
-def ask_dialog(prompt, default="", title="Slack Status", last=False):
-    """Show a text-input dialog. Returns the entered string, or None if cancelled."""
-    btn = "Save" if last else "Next"
-    script = (
-        f'set r to display dialog {json.dumps(prompt)} '
-        f'default answer {json.dumps(default)} '
-        f'with title {json.dumps(title)} '
-        f'buttons {{"Cancel", {json.dumps(btn)}}} '
-        f'default button {json.dumps(btn)}\n'
-        f'return text returned of r'
-    )
-    r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else None
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    statuses = config.get("statuses", [])
+    if any(s.get("title") == text for s in statuses):
+        print(f"Already in presets: {text}")
+        return
+
+    statuses.append({"title": text, "text": text, "emoji": emoji, "icon": icon})
+    config["statuses"] = statuses
+
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't save preset: {e}")
+        return
+
+    print(f"{icon}  Preset saved: {text}")
 
 
 def do_setup():
@@ -86,62 +97,11 @@ def do_setup():
     subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def do_add_preset():
-    title = ask_dialog(
-        "What should this preset be called?\n(This is also the Slack status text.)",
-        title="Add Preset",
-    )
-    if title is None:
-        return
-
-    icon = ask_dialog(
-        "Icon emoji for the Alfred menu:\n(e.g. 🏋️)",
-        default="💬",
-        title="Add Preset",
-    )
-    if icon is None:
-        return
-
-    slack_emoji = ask_dialog(
-        "Slack emoji code to show in your status:\n(e.g. :calendar: — leave blank for none)",
-        title="Add Preset",
-        last=True,
-    )
-    if slack_emoji is None:
-        return
-
-    config = load_config()
-    if not config:
-        notify_error("Couldn't read config file.")
-        return
-
-    statuses = config.get("statuses", [])
-    statuses.append({
-        "title": title.strip(),
-        "emoji": slack_emoji.strip(),
-        "text":  title.strip(),
-        "icon":  icon.strip(),
-    })
-    config["statuses"] = statuses
-
-    try:
-        save_config(config)
-    except Exception as e:
-        notify_error(f"Couldn't save config: {e}")
-        return
-
-    notify_success(f'Preset added: "{title.strip()}"')
-
-
 def main():
     arg = sys.stdin.read().strip()
 
     if arg == "setup":
         do_setup()
-        return
-
-    if arg == "add_preset":
-        do_add_preset()
         return
 
     config = load_config()
@@ -155,7 +115,11 @@ def main():
         notify_error(f"Unexpected input: {arg!r}")
         return
 
-    text = status.get("text", "")
+    if status.get("action") == "save_preset":
+        save_preset(status)
+        return
+
+    text  = status.get("text", "")
     emoji = status.get("emoji", "")
 
     try:

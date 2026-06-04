@@ -116,16 +116,26 @@ def main():
     if query and not any(query == s["title"].lower() for s in statuses):
         icon_char, status_text = split_emoji_prefix(raw)
         if icon_char:
-            subtitle = f"{icon_char}  Set as custom status"
+            subtitle = f"{icon_char}  Set · ⌘↩ to save as preset"
         else:
             icon_char = "💬"
             status_text = raw
-            subtitle = "💬  Set as custom — or start with an emoji for a custom icon"
+            subtitle = "💬  Set · ⌘↩ to save as preset · start with an emoji for a custom icon"
+
+        set_arg   = json.dumps({"text": status_text, "emoji": ":speech_balloon:", "icon": icon_char})
+        save_arg  = json.dumps({"text": status_text, "emoji": ":speech_balloon:", "icon": icon_char, "action": "save_preset"})
         items.append(with_icon({
             "title": f'Custom: "{status_text}"',
             "subtitle": subtitle,
-            "arg": json.dumps({"text": status_text, "emoji": ":speech_balloon:", "icon": icon_char}),
+            "arg": set_arg,
             "valid": True,
+            "mods": {
+                "cmd": {
+                    "subtitle": f"{icon_char}  Save as preset",
+                    "arg": save_arg,
+                    "valid": True,
+                }
+            },
         }, icon_char))
 
     if not items:
@@ -134,14 +144,6 @@ def main():
             "subtitle": "Keep typing to create a custom status",
             "valid": False,
         })
-
-    # Always offer to add a new preset at the bottom
-    items.append(with_icon({
-        "title": "Add new preset…",
-        "subtitle": "Save a new entry to your config file",
-        "arg": "add_preset",
-        "valid": True,
-    }, "➕"))
 
     print(json.dumps({"items": items}))
 
