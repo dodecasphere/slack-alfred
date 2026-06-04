@@ -164,7 +164,9 @@ def main():
         notify_error(f"Request failed: {e}")
         return
 
-    if not result.get("ok"):
+    if result.get("ok"):
+        print("Status cleared" if not text else text)
+    else:
         notify_error(f"Slack API error: {result.get('error', 'unknown')}")
 
 
