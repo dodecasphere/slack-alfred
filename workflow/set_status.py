@@ -169,7 +169,7 @@ def do_setup():
     steps = (
         "1. Create a new Slack app at api.slack.com/apps\\n"
         "2. From scratch → name it, pick your workspace\\n"
-        "3. OAuth & Permissions → User Token Scopes → add: users.profile:write\\n"
+        "3. OAuth & Permissions → User Token Scopes → add: users.profile:write  users:write\\n"
         "4. Install to Workspace → copy the xoxp- token\\n"
         "5. Run ./setup.sh in the repo folder"
     )

@@ -77,10 +77,11 @@ Success output (printed to stdout): a plain string that Alfred's Post Notificati
 ### Alfred workflow wiring (`workflow/info.plist`)
 
 ```
-Script Filter (keyword: slack)  →  Run Script (set_status.py)  →  Post Notification
+Script Filter (keyword: slacks)  →  Run Script (set_status.py)   →  Post Notification ("Slack Status")
+Script Filter (keyword: slackp)  →  Run Script (set_presence.py) →  Post Notification ("Slack Presence")
 ```
 
-The Script Filter runs `filter.py`; the Run Script runs `set_status.py`. Both use `echo "{query}" | python3 <script>.py`. The Post Notification step reads stdout from `set_status.py` as the notification body — print a plain string for success, nothing for silent success.
+Both Script Filters use `echo "{query}" | python3 <script>.py`. The Post Notification step reads stdout as the notification body — print a plain string for success, nothing for silent success.
 
 ## Extending the workflow
 
