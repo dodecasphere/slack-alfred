@@ -131,14 +131,14 @@ def parse_until_time(text):
     elif ampm in ('am', 'a') and hour == 12:
         hour = 0
     elif ampm is None and 1 <= hour <= 11:
-        # No am/pm — try PM today, then AM today, then PM tomorrow
+        # No am/pm — pick whichever of AM or PM comes next
         pm_dt = now.replace(hour=hour + 12, minute=minute, second=0, microsecond=0)
         am_dt = now.replace(hour=hour,      minute=minute, second=0, microsecond=0)
-        if pm_dt > now:
-            hour += 12
-        elif am_dt > now:
-            pass
-        else:
+        if pm_dt <= now:
+            pm_dt += timedelta(days=1)
+        if am_dt <= now:
+            am_dt += timedelta(days=1)
+        if pm_dt < am_dt:
             hour += 12
 
     if not 0 <= hour <= 23:
