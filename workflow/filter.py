@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
 ICON_CACHE  = os.path.expanduser("~/.config/slack-alfred/icons")
+USAGE_FILE  = os.path.expanduser("~/.config/slack-alfred/usage.json")
 
 DEFAULT_STATUSES = [
     {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅"},
@@ -317,6 +318,7 @@ def build_expiry_submenu(preset_title, custom, statuses):
             "icon":          icon_char,
             "expiry":        expiry_ts,
             "expiry_config": preset.get("expiry", ""),
+            "title":         preset_title,
         }),
         "valid": True,
     }, icon_char)
@@ -326,7 +328,7 @@ def build_expiry_submenu(preset_title, custom, statuses):
         cfg      = _fmt_duration(secs)
         ts       = int(time.time()) + secs
         arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
-                               "expiry": ts, "expiry_config": cfg})
+                               "expiry": ts, "expiry_config": cfg, "title": preset_title})
         arg_save = json.dumps({"action": "update_preset", "title": preset_title,
                                "text": text, "emoji": emoji, "icon": icon_char,
                                "expiry": ts, "expiry_config": cfg})
@@ -354,7 +356,7 @@ def build_expiry_submenu(preset_title, custom, statuses):
         if ts is not None:
             label    = "Expire" + disp[len("expires"):]
             arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
-                                   "expiry": ts, "expiry_config": cfg})
+                                   "expiry": ts, "expiry_config": cfg, "title": preset_title})
             arg_save = json.dumps({"action": "update_preset", "title": preset_title,
                                    "text": text, "emoji": emoji, "icon": icon_char,
                                    "expiry": ts, "expiry_config": cfg})
@@ -414,6 +416,25 @@ def build_remove_confirm_submenu(preset_title, statuses):
     ]
 
 
+# ── Usage tracking ───────────────────────────────────────────────────────────
+
+def load_usage():
+    try:
+        with open(USAGE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _usage_score(entry):
+    count = entry.get("count", 0)
+    if not count:
+        return 0.0
+    days_since = (time.time() - entry.get("last_used", 0)) / 86400
+    recency = 1.0 / (1.0 + days_since / 14)
+    return count * 3.0 + recency
+
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 def load_config():
@@ -442,6 +463,9 @@ def main():
 
     statuses = [s for s in config.get("statuses", DEFAULT_STATUSES)
                 if s.get("title") != "Clear status"]
+
+    usage = load_usage()
+    statuses = sorted(statuses, key=lambda s: (-_usage_score(usage.get(s["title"], {})), s["title"].lower()))
 
     # Submenu routing — triggered when right-arrow is pressed on a preset item
     if raw.startswith(_SUBMENU_PREFIX):
@@ -483,11 +507,12 @@ def main():
             "subtitle":     subtitle,
             "autocomplete": f"{_SUBMENU_PREFIX}{s['title']}",
             "arg": json.dumps({
-                "text":         s["text"],
-                "emoji":        s["emoji"],
-                "icon":         s.get("icon", ""),
-                "expiry":       expiry_ts,
+                "text":          s["text"],
+                "emoji":         s["emoji"],
+                "icon":          s.get("icon", ""),
+                "expiry":        expiry_ts,
                 "expiry_config": s.get("expiry", ""),
+                "title":         s["title"],
             }),
             "valid": True,
         }, s.get("icon", "")))

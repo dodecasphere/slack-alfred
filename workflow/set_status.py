@@ -3,10 +3,36 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.request
 
 CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
+USAGE_FILE  = os.path.expanduser("~/.config/slack-alfred/usage.json")
 SETUP_URL = "https://api.slack.com/apps"
+
+
+def load_usage():
+    try:
+        with open(USAGE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def record_usage(title):
+    if not title:
+        return
+    usage = load_usage()
+    entry = usage.get(title, {"count": 0, "last_used": 0})
+    entry["count"] += 1
+    entry["last_used"] = int(time.time())
+    usage[title] = entry
+    try:
+        with open(USAGE_FILE, "w") as f:
+            json.dump(usage, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+    except Exception:
+        pass
 
 
 def load_config():
@@ -130,6 +156,7 @@ def update_preset(status):
         return
 
     if result.get("ok"):
+        record_usage(title)
         suffix = f" · {expiry_config} expiry saved" if expiry_config else ""
         print(f"{icon_char}  {text}{suffix}" if icon_char else f"{text}{suffix}")
     else:
@@ -219,6 +246,7 @@ def main():
         return
 
     if result.get("ok"):
+        record_usage(status.get("title"))
         icon_char = status.get("icon", "")
         if not text:
             print("Status cleared")
