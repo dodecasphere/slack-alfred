@@ -14,6 +14,7 @@ from common import (
     build_expiry_submenu, build_edit_submenu, _EDIT_INFIX,
     build_remove_confirm_submenu, build_token_submenu, build_setup_item,
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
+    build_current_status_item,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -58,6 +59,8 @@ def main():
         print(json.dumps({"items": [build_setup_item()]}))
         return
 
+    token = config["token"]
+
     # Ensure custom emoji and their images are fetched. Re-triggers if either the
     # JSON cache or the images-done sentinel is missing (covers existing users
     # whose cache was written before image downloading was added).
@@ -100,7 +103,7 @@ def main():
             print(json.dumps({"items": suggestions}))
             return
 
-    items = []
+    items = [build_current_status_item(token)]
 
     # Clear status — hardcoded, no submenu
     if not query or query in "clear status":

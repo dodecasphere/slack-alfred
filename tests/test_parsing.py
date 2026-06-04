@@ -574,5 +574,164 @@ class TestBuildEditSubmenu(unittest.TestCase):
         self.assertIn("Focusing", items[0]["title"])
 
 
+# ── format_expiry_countdown ───────────────────────────────────────────────────
+
+class TestFormatExpiryCountdown(unittest.TestCase):
+
+    def _fmt(self, expiration, now=FIXED_TIME):
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = now
+            return wf.format_expiry_countdown(expiration)
+
+    def test_zero_returns_empty(self):
+        self.assertEqual(self._fmt(0), "")
+
+    def test_none_returns_empty(self):
+        self.assertEqual(self._fmt(None), "")
+
+    def test_past_timestamp_returns_clearing(self):
+        self.assertEqual(self._fmt(FIXED_TIME - 1), "clearing…")
+
+    def test_exact_zero_remaining_returns_clearing(self):
+        self.assertEqual(self._fmt(FIXED_TIME), "clearing…")
+
+    def test_seconds_under_60(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 42), "expires in 42s")
+
+    def test_exactly_59_seconds(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 59), "expires in 59s")
+
+    def test_exactly_60_seconds_is_minutes(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 60), "expires in 1m")
+
+    def test_minutes(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 47 * 60), "expires in 47m")
+
+    def test_exactly_one_hour(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 3600), "expires in 1h")
+
+    def test_hours_and_minutes(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 2 * 3600 + 15 * 60), "expires in 2h 15m")
+
+    def test_hours_exact_no_minutes_suffix(self):
+        self.assertEqual(self._fmt(FIXED_TIME + 3 * 3600), "expires in 3h")
+
+
+# ── current status cache ──────────────────────────────────────────────────────
+
+class TestCurrentStatusCache(unittest.TestCase):
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        self._tmp.close()
+        self._orig = wf.CURRENT_STATUS_CACHE
+        wf.CURRENT_STATUS_CACHE = self._tmp.name
+
+    def tearDown(self):
+        wf.CURRENT_STATUS_CACHE = self._orig
+        os.unlink(self._tmp.name)
+
+    def test_write_then_read_returns_data(self):
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME
+            wf.write_current_status_cache("Focusing", ":headphones:", 9999999)
+            data = wf.load_current_status_cache()
+        self.assertEqual(data["status_text"],       "Focusing")
+        self.assertEqual(data["status_emoji"],      ":headphones:")
+        self.assertEqual(data["status_expiration"], 9999999)
+
+    def test_stale_cache_returns_none(self):
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME
+            wf.write_current_status_cache("Focusing", ":headphones:", 0)
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME + wf._CURRENT_STATUS_TTL + 1
+            result = wf.load_current_status_cache()
+        self.assertIsNone(result)
+
+    def test_fresh_cache_returns_data(self):
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME
+            wf.write_current_status_cache("Focusing", ":headphones:", 0)
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME + wf._CURRENT_STATUS_TTL - 1
+            result = wf.load_current_status_cache()
+        self.assertIsNotNone(result)
+
+    def test_missing_file_returns_none(self):
+        os.unlink(self._tmp.name)
+        open(self._tmp.name, "w").close()  # recreate empty
+        wf.CURRENT_STATUS_CACHE = self._tmp.name + ".gone"
+        self.assertIsNone(wf.load_current_status_cache())
+        wf.CURRENT_STATUS_CACHE = self._tmp.name  # restore for tearDown
+
+    def test_corrupt_file_returns_none(self):
+        with open(self._tmp.name, "w") as f:
+            f.write("not json{{{")
+        self.assertIsNone(wf.load_current_status_cache())
+
+
+# ── build_current_status_item ─────────────────────────────────────────────────
+
+class TestBuildCurrentStatusItem(unittest.TestCase):
+
+    def _build(self, cache_data, now=FIXED_TIME):
+        with mock.patch("common.load_current_status_cache", return_value=cache_data), \
+             mock.patch("common._fetch_current_status_async") as mock_fetch, \
+             mock.patch("common.time") as mt:
+            mt.time.return_value = now
+            item = wf.build_current_status_item("xoxp-fake-token")
+        return item, mock_fetch
+
+    def test_cache_miss_returns_loading_item(self):
+        item, _ = self._build(None)
+        self.assertIn("Fetching", item["title"])
+        self.assertFalse(item.get("valid", True))
+
+    def test_cache_miss_fires_async_fetch(self):
+        _, mock_fetch = self._build(None)
+        mock_fetch.assert_called_once_with("xoxp-fake-token")
+
+    def test_no_status_set_shows_no_status_item(self):
+        item, _ = self._build({"status_text": "", "status_emoji": "", "status_expiration": 0})
+        self.assertIn("No status", item["title"])
+        self.assertFalse(item.get("valid", True))
+
+    def test_no_status_has_no_cmd_mod(self):
+        item, _ = self._build({"status_text": "", "status_emoji": "", "status_expiration": 0})
+        self.assertNotIn("cmd", item.get("mods", {}))
+
+    def test_active_status_shows_text_in_title(self):
+        item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": 0})
+        self.assertIn("Focusing", item["title"])
+
+    def test_active_status_with_expiry_shows_countdown(self):
+        expiry = FIXED_TIME + 47 * 60
+        item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": expiry})
+        self.assertIn("47m", item["subtitle"])
+
+    def test_active_status_item_is_not_valid(self):
+        item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": 0})
+        self.assertFalse(item.get("valid", True))
+
+    def test_active_status_cmd_mod_clears_status(self):
+        item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": 0})
+        cmd = item.get("mods", {}).get("cmd", {})
+        self.assertTrue(cmd.get("valid", False))
+        arg = json.loads(cmd["arg"])
+        self.assertEqual(arg["text"], "")
+        self.assertEqual(arg["emoji"], "")
+        self.assertEqual(arg["expiry"], 0)
+
+    def test_no_token_does_not_fire_fetch(self):
+        with mock.patch("common.load_current_status_cache", return_value=None), \
+             mock.patch("common._fetch_current_status_async") as mock_fetch, \
+             mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME
+            wf.build_current_status_item("")
+        mock_fetch.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

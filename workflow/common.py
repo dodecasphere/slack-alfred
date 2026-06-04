@@ -13,6 +13,9 @@ USAGE_FILE         = os.path.expanduser("~/.config/slack-alfred/usage.json")
 TOKEN_ERROR_FLAG   = os.path.expanduser("~/.config/slack-alfred/token_error")
 CUSTOM_EMOJI_CACHE        = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
 CUSTOM_EMOJI_IMAGES_DONE  = os.path.expanduser("~/.config/slack-alfred/custom_emoji_images.done")
+CURRENT_STATUS_CACHE      = os.path.expanduser("~/.config/slack-alfred/current_status.json")
+
+_CURRENT_STATUS_TTL = 60  # seconds
 
 _EMOJI_LIST_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "emoji.json")
 _CUSTOM_EMOJI_TTL = 86400  # 24 hours
@@ -696,6 +699,92 @@ def build_token_error_item():
         "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
         "valid":        False,
     }
+
+
+# ── Current status cache ──────────────────────────────────────────────────────
+
+def format_expiry_countdown(expiration_ts):
+    if not expiration_ts:
+        return ""
+    remaining = expiration_ts - time.time()
+    if remaining <= 0:
+        return "clearing…"
+    if remaining < 60:
+        return f"expires in {int(remaining)}s"
+    if remaining < 3600:
+        return f"expires in {int(remaining // 60)}m"
+    hours = int(remaining // 3600)
+    mins  = int((remaining % 3600) // 60)
+    return f"expires in {hours}h {mins}m" if mins else f"expires in {hours}h"
+
+
+def load_current_status_cache():
+    try:
+        with open(CURRENT_STATUS_CACHE) as f:
+            data = json.load(f)
+        if time.time() - data.get("fetched_at", 0) > _CURRENT_STATUS_TTL:
+            return None
+        return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def write_current_status_cache(text, emoji, expiration):
+    data = {
+        "status_text":       text,
+        "status_emoji":      emoji,
+        "status_expiration": expiration,
+        "fetched_at":        time.time(),
+    }
+    try:
+        os.makedirs(os.path.dirname(CURRENT_STATUS_CACHE), exist_ok=True)
+        with open(CURRENT_STATUS_CACHE, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def _fetch_current_status_async(token):
+    fetch_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_status.py")
+    subprocess.Popen([sys.executable, fetch_script, token],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def build_current_status_item(token):
+    cache = load_current_status_cache()
+
+    if cache is None:
+        if token:
+            _fetch_current_status_async(token)
+        return with_icon({
+            "title":    "Fetching status…",
+            "subtitle": "Current Slack status loading",
+            "valid":    False,
+        }, "💬")
+
+    text       = cache.get("status_text", "")
+    emoji      = cache.get("status_emoji", "")
+    expiration = cache.get("status_expiration", 0)
+
+    if not text:
+        return with_icon({
+            "title":    "No status set",
+            "subtitle": "",
+            "valid":    False,
+        }, "💬")
+
+    expiry_str  = format_expiry_countdown(expiration)
+    clear_arg   = json.dumps({"text": "", "emoji": "", "icon": "", "expiry": 0, "expiry_config": ""})
+    return with_icon({
+        "title":    text,
+        "subtitle": expiry_str,
+        "valid":    False,
+        "mods": {"cmd": {
+            "subtitle": "Clear status",
+            "arg":      clear_arg,
+            "valid":    True,
+        }},
+    }, emoji or "💬")
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
