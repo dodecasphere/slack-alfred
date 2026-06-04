@@ -11,7 +11,6 @@ CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
 ICON_CACHE  = os.path.expanduser("~/.config/slack-alfred/icons")
 
 DEFAULT_STATUSES = [
-    {"title": "Clear status",        "emoji": "",                        "text": "",                    "icon": "🧹"},
     {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅"},
     {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing",            "icon": "🎧"},
     {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break",         "icon": "🍴"},
@@ -412,7 +411,8 @@ def main():
         }, "⚙️")]}))
         return
 
-    statuses = config.get("statuses", DEFAULT_STATUSES)
+    statuses = [s for s in config.get("statuses", DEFAULT_STATUSES)
+                if s.get("title") != "Clear status"]
 
     # Submenu routing — triggered when right-arrow is pressed on a preset item
     if raw.startswith(_SUBMENU_PREFIX):
@@ -428,6 +428,15 @@ def main():
 
     items = []
 
+    # Clear status — hardcoded, no submenu
+    if not query or query in "clear status":
+        items.append(with_icon({
+            "title":    "Clear status",
+            "subtitle": "Clear your current status",
+            "arg":      json.dumps({"text": "", "emoji": "", "icon": "🧹", "expiry": 0, "expiry_config": ""}),
+            "valid":    True,
+        }, "🧹"))
+
     for s in statuses:
         title_match = query in s["title"].lower()
         text_match  = query and query in s["text"].lower()
@@ -436,10 +445,7 @@ def main():
 
         expiry_ts, expiry_display = compute_expiry_from_config(s.get("expiry", ""))
 
-        if s["emoji"]:
-            subtitle = f"{s['emoji']}  {s['text']}"
-        else:
-            subtitle = "Clear your current status"
+        subtitle = f"{s['emoji']}  {s['text']}"
         if expiry_display:
             subtitle += f" · {expiry_display}"
 
