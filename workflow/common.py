@@ -354,9 +354,14 @@ def build_expiry_submenu(preset_title, custom, statuses):
     icon_char = preset.get("icon", "")
     text      = preset["text"]
     emoji     = preset["emoji"]
-    sub       = f"{icon_char}  {text}" if icon_char else text
+    sub       = f"{emoji}  {text}" if emoji else text
 
     expiry_ts, _ = compute_expiry_from_config(preset.get("expiry", ""))
+
+    def make_args(ts, cfg):
+        base = {"text": text, "emoji": emoji, "icon": icon_char,
+                "expiry": ts, "expiry_config": cfg, "title": preset_title}
+        return json.dumps(base), json.dumps({"action": "update_preset", **base})
 
     # ── Set Status (first item) ──────────────────────────────────────────────
     set_item = with_icon({
@@ -375,13 +380,9 @@ def build_expiry_submenu(preset_title, custom, statuses):
 
     # ── Fixed duration items ─────────────────────────────────────────────────
     def expiry_item(label, secs):
-        cfg      = _fmt_duration(secs)
-        ts       = int(time.time()) + secs
-        arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
-                               "expiry": ts, "expiry_config": cfg, "title": preset_title})
-        arg_save = json.dumps({"action": "update_preset", "title": preset_title,
-                               "text": text, "emoji": emoji, "icon": icon_char,
-                               "expiry": ts, "expiry_config": cfg})
+        cfg             = _fmt_duration(secs)
+        ts              = int(time.time()) + secs
+        arg_set, arg_save = make_args(ts, cfg)
         return with_icon({
             "title":    label,
             "subtitle": sub,
@@ -404,12 +405,8 @@ def build_expiry_submenu(preset_title, custom, statuses):
     if custom:
         ts, disp, cfg = parse_expiry_token(custom)
         if ts is not None:
-            label    = "Expire" + disp[len("expires"):]
-            arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
-                                   "expiry": ts, "expiry_config": cfg, "title": preset_title})
-            arg_save = json.dumps({"action": "update_preset", "title": preset_title,
-                                   "text": text, "emoji": emoji, "icon": icon_char,
-                                   "expiry": ts, "expiry_config": cfg})
+            label             = "Expire" + disp[len("expires"):]
+            arg_set, arg_save = make_args(ts, cfg)
             custom_item = with_icon({
                 "title":    label,
                 "subtitle": f"{sub} · {disp}",
