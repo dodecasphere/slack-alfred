@@ -103,16 +103,7 @@ def main():
             print(json.dumps({"items": suggestions}))
             return
 
-    items = [build_current_status_item(token)]
-
-    # Clear status — hardcoded, no submenu
-    if not query or query in "clear status":
-        items.append(with_icon({
-            "title":    "Clear status",
-            "subtitle": "Clear your current status",
-            "arg":      json.dumps({"text": "", "emoji": "", "icon": "🧹", "expiry": 0, "expiry_config": ""}),
-            "valid":    True,
-        }, "🧹"))
+    items = [build_current_status_item(token)] if not query else []
 
     for s in statuses:
         title_match = query in s["title"].lower()

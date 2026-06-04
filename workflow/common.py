@@ -136,6 +136,10 @@ def parse_duration(text):
     if m:
         return int(float(m.group(1)) * 60)
 
+    m = re.fullmatch(r'(\d+(?:\.\d+)?)\s*s(?:ec|ecs|econd|econds)?', t)
+    if m:
+        return int(float(m.group(1)))
+
     return None
 
 
@@ -774,10 +778,11 @@ def build_current_status_item(token):
         }, "💬")
 
     expiry_str  = format_expiry_countdown(expiration)
+    subtitle    = f"{expiry_str} · ⌘↩ to clear" if expiry_str else "⌘↩ to clear"
     clear_arg   = json.dumps({"text": "", "emoji": "", "icon": "", "expiry": 0, "expiry_config": ""})
     return with_icon({
         "title":    text,
-        "subtitle": expiry_str,
+        "subtitle": subtitle,
         "valid":    False,
         "mods": {"cmd": {
             "subtitle": "Clear status",

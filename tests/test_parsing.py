@@ -60,6 +60,13 @@ class TestParseDuration(unittest.TestCase):
         self.assertIsNone(wf.parse_duration("30"))
         self.assertIsNone(wf.parse_duration("5"))
 
+    def test_seconds(self):
+        self.assertEqual(wf.parse_duration("60s"),        60)
+        self.assertEqual(wf.parse_duration("30sec"),      30)
+        self.assertEqual(wf.parse_duration("45secs"),     45)
+        self.assertEqual(wf.parse_duration("90second"),   90)
+        self.assertEqual(wf.parse_duration("10seconds"),  10)
+
     def test_invalid(self):
         self.assertIsNone(wf.parse_duration(""))
         self.assertIsNone(wf.parse_duration("foo"))
@@ -723,6 +730,16 @@ class TestBuildCurrentStatusItem(unittest.TestCase):
         self.assertEqual(arg["text"], "")
         self.assertEqual(arg["emoji"], "")
         self.assertEqual(arg["expiry"], 0)
+
+    def test_active_status_subtitle_includes_clear_hint(self):
+        item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": 0})
+        self.assertIn("⌘↩", item["subtitle"])
+
+    def test_active_status_with_expiry_subtitle_includes_both_countdown_and_hint(self):
+        expiry = FIXED_TIME + 47 * 60
+        item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": expiry})
+        self.assertIn("47m", item["subtitle"])
+        self.assertIn("⌘↩", item["subtitle"])
 
     def test_no_token_does_not_fire_fetch(self):
         with mock.patch("common.load_current_status_cache", return_value=None), \
