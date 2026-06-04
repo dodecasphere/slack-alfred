@@ -22,10 +22,9 @@ DEFAULT_STATUSES = [
     {"title": "Be right back",       "emoji": ":brb:",                   "text": "Be right back",       "icon": "🔙"},
 ]
 
-# Render an emoji to a 160×160 PNG using macOS JXA + NSBitmapImageRep (headless-safe).
 _JXA = """\
 ObjC.import('AppKit');
-var emoji=EMOJI, size=160, out=OUTPATH;
+var emoji=EMOJI,size=160,out=OUTPATH;
 var rep=$.NSBitmapImageRep.alloc\
 .initWithBitmapDataPlanesPixelsWidePixelsHighBitsPerSampleSamplesPerPixelHasAlphaIsPlanarColorSpaceNameBitmapFormatBytesPerRowBitsPerPixel(
     null,size,size,8,4,true,false,"NSCalibratedRGBColorSpace",0,0,0);
@@ -41,7 +40,6 @@ def icon_path(emoji_char):
     """Return path to a cached PNG for emoji_char, generating it on first use."""
     if not emoji_char:
         return None
-    # Filename from codepoints avoids Unicode filesystem issues
     name = "_".join(f"{ord(c):04X}" for c in emoji_char if ord(c) > 31)
     path = os.path.join(ICON_CACHE, f"{name}.png")
     if not os.path.exists(path):
@@ -51,19 +49,32 @@ def icon_path(emoji_char):
     return path if os.path.exists(path) else None
 
 
+def with_icon(item, emoji_char):
+    p = icon_path(emoji_char)
+    if p:
+        item["icon"] = {"path": p}
+    return item
+
+
+def split_emoji_prefix(text):
+    """
+    '🏋️ at the gym' → ('🏋️', 'at the gym')
+    'be right back'  → (None, 'be right back')
+    First whitespace-delimited token is treated as an icon emoji if it
+    starts above U+00FF (i.e. not plain ASCII/Latin).
+    """
+    parts = text.split(" ", 1)
+    if len(parts) == 2 and parts[1] and ord(parts[0][0]) > 0x00FF:
+        return parts[0], parts[1].strip()
+    return None, text
+
+
 def load_config():
     try:
         with open(CONFIG_FILE) as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return None
-
-
-def with_icon(item, emoji_char):
-    p = icon_path(emoji_char)
-    if p:
-        item["icon"] = {"path": p}
-    return item
 
 
 def main():
@@ -97,13 +108,21 @@ def main():
             "valid": True,
         }, s.get("icon", "")))
 
+    # Custom status: parse a leading emoji if present, hint if not
     if query and not any(query == s["title"].lower() for s in statuses):
+        icon_char, status_text = split_emoji_prefix(raw)
+        if icon_char:
+            subtitle = f"{icon_char}  Set as custom status"
+        else:
+            icon_char = "💬"
+            status_text = raw
+            subtitle = "💬  Set as custom — or start with an emoji for a custom icon"
         items.append(with_icon({
-            "title": f'Custom: "{raw}"',
-            "subtitle": ":speech_balloon:  Set as custom status",
-            "arg": json.dumps({"text": raw, "emoji": ":speech_balloon:"}),
+            "title": f'Custom: "{status_text}"',
+            "subtitle": subtitle,
+            "arg": json.dumps({"text": status_text, "emoji": ":speech_balloon:"}),
             "valid": True,
-        }, "💬"))
+        }, icon_char))
 
     if not items:
         items.append({
@@ -111,6 +130,14 @@ def main():
             "subtitle": "Keep typing to create a custom status",
             "valid": False,
         })
+
+    # Always offer to add a new preset at the bottom
+    items.append(with_icon({
+        "title": "Add new preset…",
+        "subtitle": "Save a new entry to your config file",
+        "arg": "add_preset",
+        "valid": True,
+    }, "➕"))
 
     print(json.dumps({"items": items}))
 

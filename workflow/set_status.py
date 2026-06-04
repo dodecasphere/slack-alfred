@@ -17,6 +17,12 @@ def load_config():
         return None
 
 
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+
 def set_slack_status(token, text, emoji):
     payload = json.dumps({
         "profile": {
@@ -40,38 +46,91 @@ def set_slack_status(token, text, emoji):
 
 def notify_error(detail=""):
     script = f'display notification {json.dumps(detail)} with title "❌ Slack status not set"'
-    subprocess.Popen(
-        ["osascript", "-e", script],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def notify_success(message):
+    script = f'display notification {json.dumps(message)} with title "Slack Status"'
+    subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def ask_dialog(prompt, default="", title="Slack Status", last=False):
+    """Show a text-input dialog. Returns the entered string, or None if cancelled."""
+    btn = "Save" if last else "Next"
+    script = (
+        f'set r to display dialog {json.dumps(prompt)} '
+        f'default answer {json.dumps(default)} '
+        f'with title {json.dumps(title)} '
+        f'buttons {{"Cancel", {json.dumps(btn)}}} '
+        f'default button {json.dumps(btn)}\n'
+        f'return text returned of r'
     )
+    r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
 
 
 def do_setup():
     subprocess.run(["open", SETUP_URL])
-    # AppleScript dialog with step-by-step and a "Copy config command" button
     steps = (
         "1. Create a new Slack app at api.slack.com/apps\\n"
         "2. From scratch → name it, pick your workspace\\n"
         "3. OAuth & Permissions → User Token Scopes → add: users.profile:write\\n"
         "4. Install to Workspace → copy the xoxp- token\\n"
-        "5. In Terminal, run:\\n"
-        "   mkdir -p ~/.config/slack-alfred\\n"
-        "   cp <workflow-folder>/config.example.json ~/.config/slack-alfred/config.json\\n"
-        "   # then open the file and paste your token"
+        "5. Run ./setup.sh in the repo folder"
     )
-    cmd_text = "mkdir -p ~/.config/slack-alfred && cp config.example.json ~/.config/slack-alfred/config.json"
     script = (
-        f'set btn to button returned of '
-        f'(display dialog "Slack Status Setter — Setup\\n\\n{steps}" '
+        f'display dialog "Slack Status Setter — Setup\\n\\n{steps}" '
         f'with title "Slack Status Setup" '
-        f'buttons {{"Copy config command", "OK"}} default button "OK")\\n'
-        f'if btn = "Copy config command" then\\n'
-        f'  set the clipboard to "{cmd_text}"\\n'
-        f'end if'
+        f'buttons {{"OK"}} default button "OK"'
     )
     subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print("Opening Slack API… follow the dialog for setup steps.")
+
+
+def do_add_preset():
+    title = ask_dialog(
+        "What should this preset be called?\n(This is also the Slack status text.)",
+        title="Add Preset",
+    )
+    if title is None:
+        return
+
+    icon = ask_dialog(
+        "Icon emoji for the Alfred menu:\n(e.g. 🏋️)",
+        default="💬",
+        title="Add Preset",
+    )
+    if icon is None:
+        return
+
+    slack_emoji = ask_dialog(
+        "Slack emoji code to show in your status:\n(e.g. :calendar: — leave blank for none)",
+        title="Add Preset",
+        last=True,
+    )
+    if slack_emoji is None:
+        return
+
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    statuses = config.get("statuses", [])
+    statuses.append({
+        "title": title.strip(),
+        "emoji": slack_emoji.strip(),
+        "text":  title.strip(),
+        "icon":  icon.strip(),
+    })
+    config["statuses"] = statuses
+
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't save config: {e}")
+        return
+
+    notify_success(f'Preset added: "{title.strip()}"')
 
 
 def main():
@@ -79,6 +138,10 @@ def main():
 
     if arg == "setup":
         do_setup()
+        return
+
+    if arg == "add_preset":
+        do_add_preset()
         return
 
     config = load_config()
