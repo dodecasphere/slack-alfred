@@ -77,9 +77,9 @@ Presets are managed entirely from Alfred — no file editing needed. Your person
 
 Your Slack token is stored in `config.json`. Tokens can be revoked at any time from the Slack app settings page.
 
-If a request is rejected due to an invalid or revoked token, you'll see an Alfred notification banner and the next time you open `slacks` only a single **⚠️ Token invalid** item will appear. Tab or → on it to enter the update flow, paste your new `xoxp-` token, then press Enter. The workflow resumes normally on the next use.
+If a request is rejected due to an invalid or revoked token, you'll see an Alfred notification banner and the next time you open either keyword only a single **⚠️ Token invalid** item will appear. Tab or → on it to enter the update flow, paste your new `xoxp-` token, then press Enter. The workflow resumes normally on the next use.
 
-To proactively rotate your token: get a new one from your Slack app's **OAuth & Permissions** page, then open `slacks`, Tab the warning item, and paste it in. If your token is still valid and you just want to replace it, you can also edit `~/.config/slack-alfred/config.json` directly.
+To replace a token directly, edit `~/.config/slack-alfred/config.json`.
 
 ## Testing
 
