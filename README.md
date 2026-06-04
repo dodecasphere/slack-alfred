@@ -21,7 +21,7 @@ Clone the repo and run:
 To rebuild after changes:
 
 ```bash
-./build.sh && open slack-status.alfredworkflow
+./build.sh
 ```
 
 ## Usage

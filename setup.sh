@@ -68,23 +68,12 @@ sed "s/xoxp-YOUR-TOKEN-HERE/$token/" "$SCRIPT_DIR/config.example.json" > "$CONFI
 echo -e "  ${GREEN}✓${RESET}  Config written to ${BOLD}config.json${RESET}"
 echo ""
 
-# ── Step 5: Build the workflow ────────────────────────────────────────────────
-echo -e "${CYAN}${BOLD}Step 5${RESET}  Building the Alfred workflow"
+# ── Step 5: Build and install ────────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}Step 5${RESET}  Building and installing the Alfred workflow"
 echo ""
 
 bash "$SCRIPT_DIR/build.sh"
 
-echo ""
-
-# ── Step 6: Install in Alfred ─────────────────────────────────────────────────
-WORKFLOW_FILE="$SCRIPT_DIR/slack-status.alfredworkflow"
-echo -e "${CYAN}${BOLD}Step 6${RESET}  Install in Alfred"
-echo ""
-echo -e "  Opening the workflow — Alfred will prompt you to install it."
-echo ""
-open "$WORKFLOW_FILE"
-
-echo ""
 echo -e "${GREEN}${BOLD}All done!${RESET}"
 echo ""
 echo -e "  Type ${BOLD}slack${RESET} in Alfred to set your status."

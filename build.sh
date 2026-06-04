@@ -1,14 +1,26 @@
 #!/bin/bash
 set -euo pipefail
+
+BOLD='\033[1m'
+DIM='\033[2m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR="$HOME/.config/slack-alfred"
 OUTPUT="$SCRIPT_DIR/slack-status.alfredworkflow"
 
+echo ""
+echo -e "${BOLD}Slack Status — Alfred Workflow${RESET}"
+echo -e "${DIM}──────────────────────────────${RESET}"
+echo ""
+
 # ── Config ────────────────────────────────────────────────────────────────────
-# Create config.json in the repo from the example if it doesn't exist yet
 if [ ! -f "$SCRIPT_DIR/config.json" ]; then
     cp "$SCRIPT_DIR/config.example.json" "$SCRIPT_DIR/config.json"
-    echo "Created config.json — add your Slack token before using."
+    echo -e "${CYAN}${BOLD}Config${RESET}   Created config.json — add your Slack token before using."
+    echo ""
 fi
 
 # ── Symlinks ──────────────────────────────────────────────────────────────────
@@ -16,37 +28,41 @@ mkdir -p "$CONFIG_DIR"
 mkdir -p "$SCRIPT_DIR/icons"
 
 symlink() {
-    local target="$1"   # file/dir in the repo
-    local link="$2"     # path under ~/.config/slack-alfred
+    local target="$1"
+    local link="$2"
 
     if [ -L "$link" ]; then
-        return  # already a symlink, leave it alone
+        return
     fi
     if [ -e "$link" ]; then
-        # Real file/dir exists — for config, migrate the token first
         if [[ "$link" == *.json ]] && grep -q "xoxp-YOUR-TOKEN-HERE" "$target" 2>/dev/null; then
             cp "$link" "$target"
-            echo "  Migrated existing $(basename "$link") → repo"
+            echo -e "  Migrated existing $(basename "$link") → repo"
         fi
         mv "$link" "${link}.bak"
-        echo "  Backed up existing $(basename "$link")"
+        echo -e "  Backed up existing $(basename "$link")"
     fi
     ln -s "$target" "$link"
-    echo "  Linked: $(basename "$link") → $target"
 }
 
-echo "Setting up symlinks…"
 symlink "$SCRIPT_DIR/config.json" "$CONFIG_DIR/config.json"
 symlink "$SCRIPT_DIR/icons"       "$CONFIG_DIR/icons"
-echo ""
 
 # ── Icons ─────────────────────────────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}Icons${RESET}"
 python3 "$SCRIPT_DIR/workflow/generate_icons.py"
 echo ""
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-echo "Building workflow…"
+echo -e "${CYAN}${BOLD}Build${RESET}"
 cd "$SCRIPT_DIR/workflow"
 zip -r "$OUTPUT" . -x "*.DS_Store" -x "__pycache__/*" -x "*.pyc" > /dev/null
-echo "Built: slack-status.alfredworkflow"
-echo "Double-click the file to install in Alfred."
+echo -e "  ${GREEN}✓${RESET}  slack-status.alfredworkflow"
+echo ""
+
+# ── Install ───────────────────────────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}Install${RESET}"
+open "$OUTPUT"
+echo -e "  ${GREEN}✓${RESET}  Opening in Alfred — follow the prompt to install."
+printf "  ${DIM}Nothing happened? \033]8;;file://%s\033\\Click here to install manually.\033]8;;\033\\${RESET}\n" "$OUTPUT"
+echo ""
