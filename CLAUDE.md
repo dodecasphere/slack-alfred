@@ -18,7 +18,13 @@ git push
 
 `build.sh` also creates `config.json` from the example if missing, sets up symlinks from `~/.config/slack-alfred/` → repo, and runs `generate_icons.py` to pre-warm the icon cache.
 
-There are no tests, linter, or CI configuration.
+The parsing logic has a unit test suite in `tests/`. Run with:
+
+```bash
+python3 -m unittest discover tests
+```
+
+**Prefer TDD:** write failing tests first, implement until they pass, then commit. At minimum, every new feature or parsing behavior must have tests before it's committed. Always run the full suite to catch regressions.
 
 ## Architecture
 
