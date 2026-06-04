@@ -218,14 +218,26 @@ def parse_custom_status(raw):
     Parse free-form query into (menu_icon, slack_emoji, status_text,
                                 expiry_ts, expiry_display, expiry_config).
 
-    '🧠 :brain: deep focus for 2h' → ('🧠', ':brain:', 'deep focus', ts, 'expires in 2h', '2h')
-    '🏋️ at the gym until 5pm'     → ('🏋️', '🏋️',    'at the gym', ts, 'expires at 5:00 PM', '5pm')
-    '🏋️ at the gym'               → ('🏋️', '🏋️',    'at the gym', 0, '', '')
-    'be right back'                → ('💬', ':speech_balloon:', 'be right back', 0, '', '')
+    '🧠 :brain: deep focus for 2h'       → ('🧠', ':brain:', 'deep focus', ts, 'expires in 2h', '2h')
+    '🏋️ at the gym until 5pm'            → ('🏋️', '🏋️',    'at the gym', ts, 'expires at 5:00 PM', '5pm')
+    '🏋️ at the gym'                      → ('🏋️', '🏋️',    'at the gym', 0, '', '')
+    ':school: Going to school'            → ('💬', ':school:', 'Going to school', 0, '', '')
+    ':school: :backpack: Going to school' → ('💬', ':school:', ':backpack: Going to school', 0, '', '')
+    'be right back'                       → ('💬', ':speech_balloon:', 'be right back', 0, '', '')
+
+    In all cases, only the first :slack_code: is used as the Slack emoji; any
+    additional codes remain in the message text as written.
     """
     icon_char, rest = split_emoji_prefix(raw)
 
     if not icon_char:
+        # No leading Unicode emoji — check for a leading :slack_code:
+        m = _SLACK_CODE.match(raw.strip())
+        if m:
+            slack_emoji = m.group(1)
+            remaining   = raw.strip()[m.end():].strip()
+            ts, display, cfg, clean = extract_expiry(remaining)
+            return "💬", slack_emoji, clean, ts, display, cfg
         ts, display, cfg, clean = extract_expiry(raw.strip())
         return "💬", ":speech_balloon:", clean, ts, display, cfg
 
@@ -468,8 +480,10 @@ def main():
         icon_char, slack_emoji, status_text, expiry_ts, expiry_display, expiry_config = \
             parse_custom_status(raw)
 
-        if icon_char == "💬":
+        if icon_char == "💬" and slack_emoji == ":speech_balloon:":
             subtitle = "💬  Lead with an emoji for a custom icon"
+        elif icon_char == "💬":
+            subtitle = f"💬  {slack_emoji} Slack emoji"
         elif slack_emoji == icon_char:
             subtitle = f"{icon_char}  Icon & Slack emoji"
         else:
