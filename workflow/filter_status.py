@@ -183,7 +183,12 @@ def main():
             "valid":    False,
         })
 
-    print(json.dumps({"items": items}))
+    output = {"items": items}
+    # Re-run every second while an active status is displayed so the expiry
+    # countdown stays current and clears reflect immediately without a keypress.
+    if items and items[0].get("title", "").startswith("Current status: "):
+        output["rerun"] = 1
+    print(json.dumps(output))
 
 
 if __name__ == "__main__":
