@@ -33,6 +33,8 @@ To rebuild after changes:
 
 ## Status (`slacks`)
 
+Choose form a list of presets or type in your own custom status!
+
 - **Enter** — set the status immediately
 - **⌘Enter** on a custom status — save as preset (title defaults to the status text)
   - Prefix with `[My Title]` to set a custom name: `[Beach day] :beach_with_umbrella: at the beach`
