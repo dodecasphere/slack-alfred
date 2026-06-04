@@ -23,12 +23,12 @@ def save_config(config):
         f.write("\n")
 
 
-def set_slack_status(token, text, emoji):
+def set_slack_status(token, text, emoji, expiry=0):
     payload = json.dumps({
         "profile": {
             "status_text": text,
             "status_emoji": emoji,
-            "status_expiration": 0,
+            "status_expiration": expiry,
         }
     }).encode("utf-8")
     req = urllib.request.Request(
@@ -68,7 +68,11 @@ def save_preset(status):
         print(f"Already in presets: {text}")
         return
 
-    statuses.append({"title": text, "text": text, "emoji": emoji, "icon": icon})
+    expiry_config = status.get("expiry_config", "")
+    entry = {"title": text, "text": text, "emoji": emoji, "icon": icon}
+    if expiry_config:
+        entry["expiry"] = expiry_config
+    statuses.append(entry)
     config["statuses"] = statuses
 
     try:
@@ -119,11 +123,12 @@ def main():
         save_preset(status)
         return
 
-    text  = status.get("text", "")
-    emoji = status.get("emoji", "")
+    text   = status.get("text", "")
+    emoji  = status.get("emoji", "")
+    expiry = int(status.get("expiry", 0))
 
     try:
-        result = set_slack_status(config["token"], text, emoji)
+        result = set_slack_status(config["token"], text, emoji, expiry)
     except Exception as e:
         notify_error(f"Request failed: {e}")
         return

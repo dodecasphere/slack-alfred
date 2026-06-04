@@ -2,9 +2,9 @@
   "token": "xoxp-YOUR-TOKEN-HERE",
   "statuses": [
     {"title": "Clear status",        "emoji": "",                        "text": "",                    "icon": "🧹"},
-    {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅"},
-    {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing",            "icon": "🎧"},
-    {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break",         "icon": "🍴"},
+    {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅", "expiry": "1h"},
+    {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing",            "icon": "🎧", "expiry": "2h"},
+    {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break",         "icon": "🍴", "expiry": "1h"},
     {"title": "Out sick",            "emoji": ":face_with_thermometer:", "text": "Out sick",            "icon": "🤒"},
     {"title": "Vacationing",         "emoji": ":palm_tree:",             "text": "Vacationing",         "icon": "🌴"},
     {"title": "Working from home",   "emoji": ":house:",                 "text": "Working from home",   "icon": "🏠"},
