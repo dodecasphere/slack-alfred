@@ -781,7 +781,7 @@ def build_current_status_item(token):
     subtitle    = f"{expiry_str} · ⌘↩ to clear" if expiry_str else "⌘↩ to clear"
     clear_arg   = json.dumps({"text": "", "emoji": "", "icon": "", "expiry": 0, "expiry_config": ""})
     return with_icon({
-        "title":    text,
+        "title":    f"Current status: {text}",
         "subtitle": subtitle,
         "valid":    False,
         "mods": {"cmd": {

@@ -712,6 +712,7 @@ class TestBuildCurrentStatusItem(unittest.TestCase):
     def test_active_status_shows_text_in_title(self):
         item, _ = self._build({"status_text": "Focusing", "status_emoji": ":headphones:", "status_expiration": 0})
         self.assertIn("Focusing", item["title"])
+        self.assertTrue(item["title"].startswith("Current status: "))
 
     def test_active_status_with_expiry_shows_countdown(self):
         expiry = FIXED_TIME + 47 * 60
