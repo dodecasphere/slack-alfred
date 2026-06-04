@@ -26,12 +26,21 @@ To rebuild after changes:
 
 ## Usage
 
-Type `slack` in Alfred.
+| Keyword | What it does |
+|---------|-------------|
+| `slacks` | Set your Slack status |
+| `slackp` | Set your Slack presence (Active / Away) |
+
+### Status (`slacks`)
 
 - **Enter** — set the selected status
 - **⌘Enter** on a custom status — save it as a preset
 - **Tab** on any preset — open expiry options or remove it
 - **⌘Enter** on an expiry option — update the preset's stored expiry
+
+### Presence (`slackp`)
+
+- **Enter** on Active or Away — set immediately
 
 ### Custom status syntax
 

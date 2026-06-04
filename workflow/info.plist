@@ -34,6 +34,32 @@
 				<false/>
 			</dict>
 		</array>
+		<key>A2B3C4D5-E6F7-8A9B-0C1D-2E3F4A5B6C7D</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>B3C4D5E6-F7A8-9B0C-1D2E-3F4A5B6C7D8E</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<true/>
+			</dict>
+		</array>
+		<key>B3C4D5E6-F7A8-9B0C-1D2E-3F4A5B6C7D8E</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>C4D5E6F7-A8B9-0C1D-2E3F-4A5B6C7D8E9F</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 	</dict>
 	<key>createdby</key>
 	<string>Michael Dulle</string>
@@ -59,7 +85,7 @@
 				<key>escaping</key>
 				<integer>102</integer>
 				<key>keyword</key>
-				<string>slack</string>
+				<string>slacks</string>
 				<key>queuedelaycustom</key>
 				<integer>3</integer>
 				<key>queuedelayimmediatelyinitially</key>
@@ -132,9 +158,98 @@
 			<key>version</key>
 			<integer>0</integer>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>slackp</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading…</string>
+				<key>script</key>
+				<string>echo "{query}" | python3 filter_presence.py</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Set your Slack presence to active or away</string>
+				<key>title</key>
+				<string>Set Slack Presence</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>A2B3C4D5-E6F7-8A9B-0C1D-2E3F4A5B6C7D</string>
+			<key>version</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>echo "{query}" | python3 set_presence.py</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>B3C4D5E6-F7A8-9B0C-1D2E-3F4A5B6C7D8E</string>
+			<key>version</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>onlyshowifquerypopulated</key>
+				<true/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Slack Presence</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>C4D5E6F7-A8B9-0C1D-2E3F-4A5B6C7D8E9F</string>
+			<key>version</key>
+			<integer>0</integer>
+		</dict>
 	</array>
 	<key>readme</key>
-	<string>Type "slack" in Alfred to set your Slack status. On first run, press Enter on "Setup Required" for instructions. See the README for full setup details.</string>
+	<string>slacks — Set your Slack status. slackp — Set your Slack presence (active/away). On first run, press Enter on "Setup Required" for instructions.</string>
 	<key>uidata</key>
 	<dict>
 		<key>3F7A8B2C-E4D5-4F6A-8B9C-0D1E2F3A4B5C</key>
@@ -157,6 +272,27 @@
 			<real>810</real>
 			<key>ypos</key>
 			<real>150</real>
+		</dict>
+		<key>A2B3C4D5-E6F7-8A9B-0C1D-2E3F4A5B6C7D</key>
+		<dict>
+			<key>xpos</key>
+			<real>150</real>
+			<key>ypos</key>
+			<real>350</real>
+		</dict>
+		<key>B3C4D5E6-F7A8-9B0C-1D2E-3F4A5B6C7D8E</key>
+		<dict>
+			<key>xpos</key>
+			<real>480</real>
+			<key>ypos</key>
+			<real>350</real>
+		</dict>
+		<key>C4D5E6F7-A8B9-0C1D-2E3F-4A5B6C7D8E9F</key>
+		<dict>
+			<key>xpos</key>
+			<real>810</real>
+			<key>ypos</key>
+			<real>350</real>
 		</dict>
 	</dict>
 	<key>version</key>

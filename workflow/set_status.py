@@ -190,7 +190,7 @@ def main():
 
     config = load_config()
     if not config or not config.get("token"):
-        notify_error("No token configured — run 'slack' in Alfred to set up.")
+        notify_error("No token configured — run 'slacks' in Alfred to set up.")
         return
 
     try:
