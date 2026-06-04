@@ -61,7 +61,15 @@ echo ""
 # ── Build ─────────────────────────────────────────────────────────────────────
 echo -e "${CYAN}${BOLD}Build${RESET}"
 cd "$SCRIPT_DIR/workflow"
-zip -r "$OUTPUT" . -x "*.DS_Store" -x "__pycache__/*" -x "*.pyc" > /dev/null
+# Pre-compile with hash-based invalidation so .pyc survives zip/unzip mtime changes
+python3 -c "
+import py_compile, glob
+mode = py_compile.PycInvalidationMode.CHECKED_HASH
+for src in glob.glob('*.py'):
+    try: py_compile.compile(src, invalidation_mode=mode, quiet=1)
+    except Exception: pass
+"
+zip -r "$OUTPUT" . -x "*.DS_Store" > /dev/null
 echo -e "  ${GREEN}✓${RESET}  slack-status.alfredworkflow"
 echo ""
 

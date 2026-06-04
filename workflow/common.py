@@ -92,6 +92,24 @@ def with_icon(item, emoji_char):
     return item
 
 
+def cached_icon_path(emoji_char):
+    """Like icon_path() but never spawns JXA — only returns a path if already cached."""
+    if not emoji_char:
+        return None
+    if emoji_char.startswith(":") and emoji_char.endswith(":"):
+        name = emoji_char[1:-1]
+        for ext in (".png", ".gif", ".jpg"):
+            p = os.path.join(ICON_CACHE, f"{name}{ext}")
+            if os.path.exists(p):
+                return p
+        char = _load_standard_emoji().get(name)
+        if char:
+            return cached_icon_path(char)
+        return None
+    path = os.path.join(ICON_CACHE, f"{_icon_name(emoji_char)}.png")
+    return path if os.path.exists(path) else None
+
+
 # ── Expiry parsing ────────────────────────────────────────────────────────────
 
 def parse_duration(text):

@@ -9,10 +9,10 @@ from common import (
     load_config, load_usage, _usage_score,
     TOKEN_ERROR_FLAG, CUSTOM_EMOJI_CACHE, CUSTOM_EMOJI_IMAGES_DONE,
     _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
-    DEFAULT_STATUSES, with_icon, compute_expiry_from_config, parse_custom_status,
-    split_submenu_query, build_expiry_submenu, build_remove_confirm_submenu,
-    build_token_submenu, build_setup_item, build_token_error_item,
-    search_emoji, _refresh_custom_emoji_async,
+    DEFAULT_STATUSES, with_icon, cached_icon_path, compute_expiry_from_config,
+    parse_custom_status, split_submenu_query, build_expiry_submenu,
+    build_remove_confirm_submenu, build_token_submenu, build_setup_item,
+    build_token_error_item, search_emoji, _refresh_custom_emoji_async,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -31,8 +31,10 @@ def _build_emoji_suggestions(raw, fragment):
             "autocomplete": full_query,
             "valid":        False,
         }
-        # char for standard emoji (Unicode), ":code:" for custom (cached image file)
-        item = with_icon(item, char if char else f":{code}:")
+        # Use cached_icon_path to avoid spawning JXA for each uncached emoji
+        p = cached_icon_path(char if char else f":{code}:")
+        if p:
+            item["icon"] = {"path": p}
         items.append(item)
     return items
 
