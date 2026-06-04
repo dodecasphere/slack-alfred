@@ -184,9 +184,10 @@ def main():
         })
 
     output = {"items": items}
-    # Re-run every second while an active status is displayed so the expiry
-    # countdown stays current and clears reflect immediately without a keypress.
-    if items and items[0].get("title", "").startswith("Current status: "):
+    # Re-run every second while the current status item is loading or active so
+    # the fetch resolves, expiry countdown ticks, and clears reflect immediately.
+    first = items[0].get("title", "") if items else ""
+    if first == "Fetching status…" or first.startswith("Current status: "):
         output["rerun"] = 1
     print(json.dumps(output))
 
