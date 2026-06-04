@@ -84,6 +84,86 @@ def save_preset(status):
     print(f"{icon}  Preset saved: {text}")
 
 
+def update_preset(status):
+    title         = status.get("title", "").strip()
+    expiry_config = status.get("expiry_config", "")
+
+    if not title:
+        notify_error("No preset title specified.")
+        return
+
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    statuses = config.get("statuses", [])
+    updated = False
+    for s in statuses:
+        if s.get("title") == title:
+            if expiry_config:
+                s["expiry"] = expiry_config
+            else:
+                s.pop("expiry", None)
+            updated = True
+            break
+
+    if not updated:
+        notify_error(f"Preset not found: {title}")
+        return
+
+    config["statuses"] = statuses
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't update preset: {e}")
+        return
+
+    text      = status.get("text", "")
+    emoji     = status.get("emoji", "")
+    expiry    = int(status.get("expiry", 0))
+    icon_char = status.get("icon", "")
+
+    try:
+        result = set_slack_status(config["token"], text, emoji, expiry)
+    except Exception as e:
+        notify_error(f"Request failed: {e}")
+        return
+
+    if result.get("ok"):
+        suffix = f" · {expiry_config} expiry saved" if expiry_config else ""
+        print(f"{icon_char}  {text}{suffix}" if icon_char else f"{text}{suffix}")
+    else:
+        notify_error(f"Slack API error: {result.get('error', 'unknown')}")
+
+
+def remove_preset(status):
+    title = status.get("title", "").strip()
+    if not title:
+        notify_error("No preset title specified.")
+        return
+
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    statuses = config.get("statuses", [])
+    filtered = [s for s in statuses if s.get("title") != title]
+    if len(filtered) == len(statuses):
+        notify_error(f"Preset not found: {title}")
+        return
+
+    config["statuses"] = filtered
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't remove preset: {e}")
+        return
+
+    print(f"Preset removed: {title}")
+
+
 def do_setup():
     subprocess.run(["open", SETUP_URL])
     steps = (
@@ -121,6 +201,14 @@ def main():
 
     if status.get("action") == "save_preset":
         save_preset(status)
+        return
+
+    if status.get("action") == "update_preset":
+        update_preset(status)
+        return
+
+    if status.get("action") == "remove_preset":
+        remove_preset(status)
         return
 
     text   = status.get("text", "")

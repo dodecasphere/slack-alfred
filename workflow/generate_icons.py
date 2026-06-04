@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from filter import DEFAULT_STATUSES, ICON_CACHE, CONFIG_FILE, _JXA
 
-EXTRA = ["⚙️", "💬", "➕"]
+EXTRA = ["⚙️", "💬", "➕", "⏲️", "❌"]
 
 
 def generate(emoji_char):

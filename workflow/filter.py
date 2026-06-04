@@ -38,7 +38,9 @@ str.drawAtPointWithAttributes($.NSMakePoint((size-sz.width)/2,(size-sz.height)/2
 rep.representationUsingTypeProperties(4,ObjC.wrap({})).writeToFileAtomically(out,true);
 """
 
-_SLACK_CODE = re.compile(r'(:[a-z0-9_+\-]+:)', re.IGNORECASE)
+_SLACK_CODE      = re.compile(r'(:[a-z0-9_+\-]+:)', re.IGNORECASE)
+_SUBMENU_PREFIX  = "» "
+_REMOVE_SUFFIX   = " » remove"
 
 
 # ── Icon cache ────────────────────────────────────────────────────────────────
@@ -239,6 +241,151 @@ def parse_custom_status(raw):
     return icon_char, icon_char, clean, ts, display, cfg
 
 
+# ── Submenus ─────────────────────────────────────────────────────────────────
+
+def split_submenu_query(inner, statuses):
+    """Split '» Focusing 2h' inner into ('Focusing', '2h'). Longest title wins."""
+    for s in sorted(statuses, key=lambda s: len(s["title"]), reverse=True):
+        title = s["title"]
+        if inner == title:
+            return title, ""
+        if inner.startswith(title + " "):
+            return title, inner[len(title) + 1:].strip()
+    return inner, ""
+
+
+def build_expiry_submenu(preset_title, custom, statuses):
+    preset = next((s for s in statuses if s["title"] == preset_title), None)
+    if not preset:
+        return [{"title": f"Preset not found: {preset_title!r}", "valid": False}]
+
+    icon_char = preset.get("icon", "")
+    text      = preset["text"]
+    emoji     = preset["emoji"]
+    sub       = f"{icon_char}  {text}" if icon_char else text
+
+    expiry_ts, _ = compute_expiry_from_config(preset.get("expiry", ""))
+
+    # ── Set Status (first item) ──────────────────────────────────────────────
+    set_item = with_icon({
+        "title":    "Set Status",
+        "subtitle": sub,
+        "arg":      json.dumps({
+            "text":          text,
+            "emoji":         emoji,
+            "icon":          icon_char,
+            "expiry":        expiry_ts,
+            "expiry_config": preset.get("expiry", ""),
+        }),
+        "valid": True,
+    }, icon_char)
+
+    # ── Fixed duration items ─────────────────────────────────────────────────
+    def expiry_item(label, secs):
+        cfg      = _fmt_duration(secs)
+        ts       = int(time.time()) + secs
+        arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
+                               "expiry": ts, "expiry_config": cfg})
+        arg_save = json.dumps({"action": "update_preset", "title": preset_title,
+                               "text": text, "emoji": emoji, "icon": icon_char,
+                               "expiry": ts, "expiry_config": cfg})
+        return with_icon({
+            "title":    label,
+            "subtitle": sub,
+            "arg":      arg_set,
+            "valid":    True,
+            "mods": {"cmd": {
+                "subtitle": "Save preset with this expiry",
+                "arg":      arg_save,
+                "valid":    True,
+            }},
+        }, "⏲️")
+
+    duration_items = [
+        expiry_item("Expire in 30 minutes", 1800),
+        expiry_item("Expire in 1 hour",     3600),
+        expiry_item("Expire in 2 hours",    7200),
+    ]
+
+    # ── Custom expiry (live-parsed as user types) ────────────────────────────
+    if custom:
+        secs = parse_duration(custom)
+        if secs is not None:
+            cfg   = _fmt_duration(secs)
+            ts    = int(time.time()) + secs
+            label = f"Expire in {cfg}"
+            disp  = f"expires in {cfg}"
+        else:
+            ts, time_label = parse_until_time(custom)
+            if ts is not None:
+                cfg   = custom
+                label = f"Expire at {time_label}"
+                disp  = f"expires at {time_label}"
+            else:
+                ts = None
+
+        if ts is not None:
+            arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
+                                   "expiry": ts, "expiry_config": cfg})
+            arg_save = json.dumps({"action": "update_preset", "title": preset_title,
+                                   "text": text, "emoji": emoji, "icon": icon_char,
+                                   "expiry": ts, "expiry_config": cfg})
+            custom_item = with_icon({
+                "title":    label,
+                "subtitle": f"{sub} · {disp}",
+                "arg":      arg_set,
+                "valid":    True,
+                "mods": {"cmd": {
+                    "subtitle": "Save preset with this expiry",
+                    "arg":      arg_save,
+                    "valid":    True,
+                }},
+            }, "⏲️")
+        else:
+            custom_item = with_icon({
+                "title":    f"'{custom}' — not recognized",
+                "subtitle": "Try: 2h, 30m, 3pm, 5:30pm, 17:00",
+                "valid":    False,
+            }, "⏲️")
+    else:
+        custom_item = with_icon({
+            "title":    "Custom expiry…",
+            "subtitle": "Type a duration (2h, 30m) or time (3pm, 5:30pm)",
+            "valid":    False,
+        }, "⏲️")
+
+    # ── Remove preset (last item) ────────────────────────────────────────────
+    remove_item = with_icon({
+        "title":        "Remove preset",
+        "subtitle":     f"Delete '{preset_title}' from saved presets",
+        "autocomplete": f"{_SUBMENU_PREFIX}{preset_title}{_REMOVE_SUFFIX}",
+        "valid":        False,
+    }, "❌")
+
+    return [set_item] + duration_items + [custom_item, remove_item]
+
+
+def build_remove_confirm_submenu(preset_title, statuses):
+    preset = next((s for s in statuses if s["title"] == preset_title), None)
+    if not preset:
+        return [{"title": f"Preset not found: {preset_title!r}", "valid": False}]
+
+    icon_char = preset.get("icon", "")
+    return [
+        with_icon({
+            "title":    f"Confirm: Remove '{preset_title}'",
+            "subtitle": "This cannot be undone",
+            "arg":      json.dumps({"action": "remove_preset", "title": preset_title}),
+            "valid":    True,
+        }, icon_char),
+        {
+            "title":    "Cancel",
+            "subtitle": "Press Esc to go back",
+            "valid":    False,
+        },
+    ]
+
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 def load_config():
@@ -266,6 +413,19 @@ def main():
         return
 
     statuses = config.get("statuses", DEFAULT_STATUSES)
+
+    # Submenu routing — triggered when right-arrow is pressed on a preset item
+    if raw.startswith(_SUBMENU_PREFIX):
+        inner = raw[len(_SUBMENU_PREFIX):]
+        if inner.endswith(_REMOVE_SUFFIX):
+            preset_title = inner[:-len(_REMOVE_SUFFIX)]
+            items = build_remove_confirm_submenu(preset_title, statuses)
+        else:
+            title, custom = split_submenu_query(inner, statuses)
+            items = build_expiry_submenu(title, custom, statuses)
+        print(json.dumps({"items": items}))
+        return
+
     items = []
 
     for s in statuses:
@@ -284,8 +444,9 @@ def main():
             subtitle += f" · {expiry_display}"
 
         items.append(with_icon({
-            "title": s["title"],
-            "subtitle": subtitle,
+            "title":        s["title"],
+            "subtitle":     subtitle,
+            "autocomplete": f"{_SUBMENU_PREFIX}{s['title']}",
             "arg": json.dumps({
                 "text":         s["text"],
                 "emoji":        s["emoji"],
