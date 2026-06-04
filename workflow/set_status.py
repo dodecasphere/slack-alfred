@@ -165,7 +165,13 @@ def main():
         return
 
     if result.get("ok"):
-        print("Status cleared" if not text else text)
+        icon_char = status.get("icon", "")
+        if not text:
+            print("Status cleared")
+        elif icon_char:
+            print(f"{icon_char}  {text}")
+        else:
+            print(text)
     else:
         notify_error(f"Slack API error: {result.get('error', 'unknown')}")
 

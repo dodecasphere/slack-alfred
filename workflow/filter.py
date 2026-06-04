@@ -108,7 +108,7 @@ def main():
         items.append(with_icon({
             "title": s["title"],
             "subtitle": subtitle,
-            "arg": json.dumps({"text": s["text"], "emoji": s["emoji"]}),
+            "arg": json.dumps({"text": s["text"], "emoji": s["emoji"], "icon": s.get("icon", "")}),
             "valid": True,
         }, s.get("icon", "")))
 
@@ -124,7 +124,7 @@ def main():
         items.append(with_icon({
             "title": f'Custom: "{status_text}"',
             "subtitle": subtitle,
-            "arg": json.dumps({"text": status_text, "emoji": ":speech_balloon:"}),
+            "arg": json.dumps({"text": status_text, "emoji": ":speech_balloon:", "icon": icon_char}),
             "valid": True,
         }, icon_char))
 
