@@ -8,7 +8,7 @@ Set your Slack status from Alfred. Requires Alfred with a Powerpack license.
 curl -fsSL https://raw.githubusercontent.com/dodecasphere/slack-alfred/main/install.sh | bash
 ```
 
-This downloads the workflow, walks you through creating a Slack app and getting a token, then installs everything in Alfred automatically. You need three Slack permission scopes: `users.profile:write` for setting status, `users:write` for setting presence, and `emoji:read` for workspace emoji suggestions.
+This downloads the workflow, walks you through creating a Slack app and getting a token, then installs everything in Alfred automatically. You need four Slack permission scopes: `users.profile:write` for setting status, `users.profile:read` for reading your current status, `users:write` for setting presence, and `emoji:read` for workspace emoji suggestions.
 
 ### Manual installation
 
@@ -33,7 +33,11 @@ To rebuild after changes:
 
 ## Status (`slacks`)
 
-Choose form a list of presets or type in your own custom status!
+Choose from a list of presets or type your own custom status.
+
+The top item always shows your **current Slack status** with a live expiry countdown. **⌘Enter** on it clears your status immediately.
+
+Below your presets, any status you've set in the **last 10 days** appears as a recent — ready to re-apply with Enter or save as a preset with ⌘Enter.
 
 - **Enter** — set the status immediately
 - **⌘Enter** on a custom status — save as preset (title defaults to the status text)
