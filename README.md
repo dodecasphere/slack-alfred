@@ -1,51 +1,69 @@
 # Slack Status — Alfred Workflow
 
-Set your Slack status from Alfred. Type `slack`, pick a preset or type anything for a custom status.
+Set your Slack status from Alfred. Requires Alfred with a Powerpack license.
 
 ## Setup
 
-### 1. Create a Slack app and get a token
-
-1. Go to [api.slack.com/apps](https://api.slack.com/apps) and click **Create New App → From scratch**
-2. Give it a name (e.g. "Status Setter") and select your workspace
-3. Go to **OAuth & Permissions → User Token Scopes** and add: `users.profile:write`
-4. Click **Install to Workspace** and authorize
-5. Copy the **User OAuth Token** — it starts with `xoxp-`
-
-### 2. Create your config file
-
 ```bash
-mkdir -p ~/.config/slack-alfred
-cp config.example.json ~/.config/slack-alfred/config.json
+./setup.sh
 ```
 
-Open `~/.config/slack-alfred/config.json` and replace `xoxp-YOUR-TOKEN-HERE` with your token.
+This walks you through creating a Slack app, getting a token, and installing the workflow. For the Slack app, you only need one permission scope: `users.profile:write`.
 
-### 3. Install the workflow
+To reinstall or rebuild after changes:
 
 ```bash
 ./build.sh
 ```
 
-Double-click `slack-status.alfredworkflow` to install it in Alfred.
-
 ## Usage
 
-- **`slack`** — shows all preset statuses
-- **`slack meeting`** — filters presets matching "meeting"
-- **`slack at the gym`** — no match → offers to set "at the gym" as a custom status with a 💬 emoji
-- Selecting any item sets it immediately and shows a notification
+Type `slack` in Alfred.
 
-## Customizing statuses
+- **Enter** — set the selected status
+- **⌘Enter** on a custom status — save it as a preset in `config.json`
 
-Edit the `statuses` array in `~/.config/slack-alfred/config.json`. Each entry needs:
+### Custom status syntax
 
-```json
-{"title": "Display name in Alfred", "emoji": ":slack_emoji:", "text": "Status text in Slack"}
+Type anything after `slack` to set a one-off status:
+
+| Input | Icon | Slack emoji | Text |
+|-------|------|-------------|------|
+| `be right back` | 💬 | `:speech_balloon:` | be right back |
+| `🏋️ at the gym` | 🏋️ | 🏋️ | at the gym |
+| `🧠 :brain: deep focus` | 🧠 | `:brain:` | deep focus |
+
+### Expiry
+
+Append `for <duration>` or `until <time>` to any custom status:
+
+```
+slack 🎧 focusing for 2h
+slack lunch for 45m
+slack 🧠 :brain: deep work until 5pm
 ```
 
-Leave `emoji` and `text` empty to use the entry as a "clear status" option.
+**Duration formats:** `2m` `2min` `2mins` `2minutes` `2h` `2hr` `2hours` `1h30m` `1.5h`  
+**Time formats:** `2pm` `2p` `2:30pm` `14:00` `noon` `midnight` `2 o'clock`
 
-## First run (no token yet)
+## Config
 
-If no config file exists, the workflow shows **"Setup Required"**. Press Enter to open the Slack API page and see a setup dialog.
+Everything lives in `config.json` at the repo root (gitignored — contains your token). `build.sh` symlinks it to `~/.config/slack-alfred/` so the workflow can find it.
+
+### Preset format
+
+```json
+{
+  "token": "xoxp-...",
+  "statuses": [
+    {"title": "Focusing", "emoji": ":headphones:", "text": "Focusing", "icon": "🎧", "expiry": "2h"},
+    {"title": "Standup",  "emoji": ":calendar:",   "text": "Standup",  "icon": "📅", "expiry": "9:30am"}
+  ]
+}
+```
+
+- `title` — shown in Alfred
+- `text` — the Slack status text
+- `emoji` — Slack emoji code shown next to your name (e.g. `:calendar:`)
+- `icon` — emoji shown in the Alfred menu
+- `expiry` — optional; duration (`2h`, `30m`) or time (`5pm`, `noon`) — re-computed from now each time the preset is loaded

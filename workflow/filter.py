@@ -302,7 +302,7 @@ def main():
             parse_custom_status(raw)
 
         if icon_char == "💬":
-            subtitle = "💬  Set · ⌘↩ save as preset · lead with emoji for a custom icon"
+            subtitle = "💬  Lead with an emoji for a custom icon"
         elif slack_emoji == icon_char:
             subtitle = f"{icon_char}  Icon & Slack emoji"
         else:
@@ -310,7 +310,7 @@ def main():
 
         if expiry_display:
             subtitle += f" · {expiry_display}"
-        subtitle += " · ⌘↩ save as preset"
+        subtitle += " · ⌘↩ to save as preset"
 
         set_arg  = json.dumps({"text": status_text, "emoji": slack_emoji, "icon": icon_char,
                                "expiry": expiry_ts, "expiry_config": expiry_config})
