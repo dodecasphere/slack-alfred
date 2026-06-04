@@ -8,14 +8,13 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from filter import DEFAULT_STATUSES, ICON_CACHE, CONFIG_FILE, _JXA
+from filter import DEFAULT_STATUSES, ICON_CACHE, CONFIG_FILE, _JXA, _icon_name
 
 EXTRA = ["⚙️", "💬", "➕", "⏲️", "❌", "🧑‍💻", "🏃"]
 
 
 def generate(emoji_char):
-    name = "_".join(f"{ord(c):04X}" for c in emoji_char if ord(c) > 31)
-    path = os.path.join(ICON_CACHE, f"{name}.png")
+    path = os.path.join(ICON_CACHE, f"{_icon_name(emoji_char)}.png")
     if os.path.exists(path):
         return path
     os.makedirs(ICON_CACHE, exist_ok=True)

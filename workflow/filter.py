@@ -44,11 +44,14 @@ _REMOVE_SUFFIX   = " » remove"
 
 # ── Icon cache ────────────────────────────────────────────────────────────────
 
+def _icon_name(emoji_char):
+    return "_".join(f"{ord(c):04X}" for c in emoji_char if ord(c) > 31)
+
+
 def icon_path(emoji_char):
     if not emoji_char:
         return None
-    name = "_".join(f"{ord(c):04X}" for c in emoji_char if ord(c) > 31)
-    path = os.path.join(ICON_CACHE, f"{name}.png")
+    path = os.path.join(ICON_CACHE, f"{_icon_name(emoji_char)}.png")
     if os.path.exists(path):
         return path
     os.makedirs(ICON_CACHE, exist_ok=True)

@@ -51,7 +51,7 @@ def notify_error(detail=""):
 
 def save_preset(status):
     text  = status.get("text", "").strip()
-    icon  = status.get("icon", "\U0001f4ac").strip()
+    icon  = status.get("icon", "💬").strip()
     emoji = status.get("emoji", "").strip()
 
     if not text:
@@ -112,7 +112,6 @@ def update_preset(status):
         notify_error(f"Preset not found: {title}")
         return
 
-    config["statuses"] = statuses
     try:
         save_config(config)
     except Exception as e:
@@ -199,16 +198,14 @@ def main():
         notify_error(f"Unexpected input: {arg!r}")
         return
 
-    if status.get("action") == "save_preset":
-        save_preset(status)
-        return
-
-    if status.get("action") == "update_preset":
-        update_preset(status)
-        return
-
-    if status.get("action") == "remove_preset":
-        remove_preset(status)
+    _ACTIONS = {
+        "save_preset":   save_preset,
+        "update_preset": update_preset,
+        "remove_preset": remove_preset,
+    }
+    handler = _ACTIONS.get(status.get("action"))
+    if handler:
+        handler(status)
         return
 
     text   = status.get("text", "")
