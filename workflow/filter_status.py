@@ -27,12 +27,12 @@ def _build_emoji_suggestions(raw, fragment):
         full_query = f"{prefix}:{code}: "
         item = {
             "title":        f":{code}:",
-            "subtitle":     char if char else "custom workspace emoji",
+            "subtitle":     char or "",
             "autocomplete": full_query,
             "valid":        False,
         }
-        if char:
-            item = with_icon(item, char)
+        # char for standard emoji (Unicode), ":code:" for custom (cached image file)
+        item = with_icon(item, char if char else f":{code}:")
         items.append(item)
     return items
 

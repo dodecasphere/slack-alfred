@@ -8,7 +8,8 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(__file__))
 from common import (CONFIG_FILE, TOKEN_ERROR_FLAG, _AUTH_ERRORS,
                     set_token_error_flag, clear_token_error_flag,
-                    record_usage, load_config, do_setup)
+                    record_usage, load_config, do_setup,
+                    _refresh_custom_emoji_async)
 
 
 def save_config(config):
@@ -152,6 +153,7 @@ def save_token(status):
         return
 
     clear_token_error_flag()
+    _refresh_custom_emoji_async()
     print("✓  Token saved")
 
 
