@@ -5,11 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build and install
 
 ```bash
-./build.sh          # package workflow/ into slack-status.alfredworkflow
-open slack-status.alfredworkflow   # install in Alfred
+./build.sh          # package workflow/ into slack-status.alfredworkflow and open in Alfred
 ```
 
-**After completing any feature or meaningful bug fix, always run both commands so the user can test immediately.**
+**After completing any feature or meaningful bug fix, always run this so the user can test immediately.**
 
 `build.sh` also creates `config.json` from the example if missing, sets up symlinks from `~/.config/slack-alfred/` → repo, and runs `generate_icons.py` to pre-warm the icon cache.
 
