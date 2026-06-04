@@ -7,7 +7,8 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
 from common import (TOKEN_ERROR_FLAG, _AUTH_ERRORS,
-                    set_token_error_flag, clear_token_error_flag, load_config)
+                    set_token_error_flag, clear_token_error_flag,
+                    load_config, do_setup)
 
 
 def notify_error(detail=""):
@@ -17,6 +18,10 @@ def notify_error(detail=""):
 
 def main():
     arg = sys.stdin.read().strip()
+
+    if arg == "setup":
+        do_setup()
+        return
 
     try:
         data = json.loads(arg)

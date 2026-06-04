@@ -489,6 +489,46 @@ def record_usage(title):
         pass
 
 
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+SETUP_URL = "https://api.slack.com/apps"
+
+
+def do_setup():
+    subprocess.run(["open", SETUP_URL])
+    steps = (
+        "1. Create a new Slack app at api.slack.com/apps\\n"
+        "2. From scratch → name it, pick your workspace\\n"
+        "3. OAuth & Permissions → User Token Scopes → add: users.profile:write  users:write\\n"
+        "4. Install to Workspace → copy the xoxp- token\\n"
+        "5. Run ./setup.sh in the repo folder"
+    )
+    script = (
+        f'display dialog "Slack Status Setter — Setup\\n\\n{steps}" '
+        f'with title "Slack Status Setup" '
+        f'buttons {{"OK"}} default button "OK"'
+    )
+    subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def build_setup_item():
+    return with_icon({
+        "title":    "Setup Required — Press Enter",
+        "subtitle": "Opens Slack API page to generate your token",
+        "arg":      "setup",
+        "valid":    True,
+    }, "⚙️")
+
+
+def build_token_error_item():
+    return {
+        "title":        "⚠️ Token invalid — Tab to update",
+        "subtitle":     "Slack rejected your token. Tab to paste a new one.",
+        "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
+        "valid":        False,
+    }
+
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 def load_config():

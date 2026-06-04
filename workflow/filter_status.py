@@ -9,7 +9,7 @@ from common import (
     TOKEN_ERROR_FLAG, _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
     DEFAULT_STATUSES, with_icon, compute_expiry_from_config, parse_custom_status,
     split_submenu_query, build_expiry_submenu, build_remove_confirm_submenu,
-    build_token_submenu,
+    build_token_submenu, build_setup_item, build_token_error_item,
 )
 
 
@@ -19,12 +19,7 @@ def main():
     config = load_config()
 
     if not config or not config.get("token"):
-        print(json.dumps({"items": [with_icon({
-            "title":    "Setup Required — Press Enter",
-            "subtitle": "Opens Slack API page to generate your token",
-            "arg":      "setup",
-            "valid":    True,
-        }, "⚙️")]}))
+        print(json.dumps({"items": [build_setup_item()]}))
         return
 
     statuses = [s for s in config.get("statuses", DEFAULT_STATUSES)
@@ -53,12 +48,7 @@ def main():
     items = []
 
     if os.path.exists(TOKEN_ERROR_FLAG):
-        print(json.dumps({"items": [{
-            "title":        "⚠️ Token invalid — Tab to update",
-            "subtitle":     "Slack rejected your token. Tab or → to paste a new one.",
-            "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
-            "valid":        False,
-        }]}))
+        print(json.dumps({"items": [build_token_error_item()]}))
         return
 
     # Clear status — hardcoded, no submenu

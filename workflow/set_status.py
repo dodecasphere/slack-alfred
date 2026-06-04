@@ -8,9 +8,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(__file__))
 from common import (CONFIG_FILE, TOKEN_ERROR_FLAG, _AUTH_ERRORS,
                     set_token_error_flag, clear_token_error_flag,
-                    record_usage, load_config)
-
-SETUP_URL = "https://api.slack.com/apps"
+                    record_usage, load_config, do_setup)
 
 
 def save_config(config):
@@ -183,22 +181,6 @@ def remove_preset(status):
 
     print(f"Preset removed: {title}")
 
-
-def do_setup():
-    subprocess.run(["open", SETUP_URL])
-    steps = (
-        "1. Create a new Slack app at api.slack.com/apps\\n"
-        "2. From scratch → name it, pick your workspace\\n"
-        "3. OAuth & Permissions → User Token Scopes → add: users.profile:write  users:write\\n"
-        "4. Install to Workspace → copy the xoxp- token\\n"
-        "5. Run ./setup.sh in the repo folder"
-    )
-    script = (
-        f'display dialog "Slack Status Setter — Setup\\n\\n{steps}" '
-        f'with title "Slack Status Setup" '
-        f'buttons {{"OK"}} default button "OK"'
-    )
-    subprocess.Popen(["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def main():
