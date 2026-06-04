@@ -404,10 +404,6 @@ class TestSearchEmoji(unittest.TestCase):
             self.assertIsNotNone(char)
             self.assertGreater(len(char), 0)
 
-    def test_limit_respected(self):
-        results = wf.search_emoji("s", limit=3)
-        self.assertLessEqual(len(results), 3)
-
     def test_no_match_returns_empty(self):
         results = wf.search_emoji("zzzznotarealemoji")
         self.assertEqual(results, [])
@@ -415,7 +411,34 @@ class TestSearchEmoji(unittest.TestCase):
     def test_results_sorted_alphabetically(self):
         results = wf.search_emoji("fire")
         codes = [r[0] for r in results]
-        self.assertEqual(codes, sorted(codes))
+        prefix_codes   = [c for c in codes if c.startswith("fire")]
+        substring_codes = [c for c in codes if not c.startswith("fire")]
+        self.assertEqual(prefix_codes, sorted(prefix_codes))
+        self.assertEqual(substring_codes, sorted(substring_codes))
+
+    def test_substring_match_included(self):
+        # 'ear' appears in 'bear' and 'heart', not just codes starting with 'ear'
+        results = wf.search_emoji("ear")
+        codes = [r[0] for r in results]
+        self.assertTrue(any("ear" in c for c in codes))
+        # At least one substring match (code that doesn't start with 'ear')
+        self.assertTrue(any(not c.startswith("ear") and "ear" in c for c in codes))
+
+    def test_prefix_before_substring(self):
+        # Codes starting with 'heart' should appear before codes merely containing 'heart'
+        results = wf.search_emoji("heart")
+        codes = [r[0] for r in results]
+        prefix_idxs   = [i for i, c in enumerate(codes) if c.startswith("heart")]
+        substring_idxs = [i for i, c in enumerate(codes) if not c.startswith("heart")]
+        if prefix_idxs and substring_idxs:
+            self.assertLess(max(prefix_idxs), min(substring_idxs))
+
+    def test_all_matches_returned(self):
+        # No artificial limit — all prefix + substring matches come back
+        results = wf.search_emoji("sun")
+        codes = [r[0] for r in results]
+        self.assertTrue(len(results) > 1)
+        self.assertTrue(all("sun" in c for c in codes))
 
     def test_custom_emoji_yields_none_char(self):
         # Patch _load_custom_emoji to inject a fake custom emoji

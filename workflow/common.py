@@ -545,34 +545,34 @@ def _refresh_custom_emoji_async():
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def search_emoji(fragment, limit=9):
+def search_emoji(fragment):
     """
-    Return up to `limit` emoji codes whose names start with `fragment`.
-    Each result is (code, char_or_None) — char is None for custom workspace emoji.
-    Standard emoji come first (they have renderable chars); custom fill remaining slots.
+    Return all emoji codes matching fragment. Prefix matches come first,
+    then substring matches (e.g. 'ea' matches ':eating:' then ':beachball:').
+    Standard emoji precede custom within each group.
     """
-    frag = fragment.lower()
+    frag     = fragment.lower()
     standard = _load_standard_emoji()
     custom   = _load_custom_emoji()
 
-    results = []
-    seen    = set()
+    prefix_std = []
+    substr_std = []
+    prefix_cus = []
+    substr_cus = []
 
     for code in sorted(standard):
         if code.startswith(frag):
-            results.append((code, standard[code]))
-            seen.add(code)
-            if len(results) >= limit:
-                return results
+            prefix_std.append((code, standard[code]))
+        elif frag in code:
+            substr_std.append((code, standard[code]))
 
     for code in sorted(custom):
-        if code.startswith(frag) and code not in seen:
-            results.append((code, None))
-            seen.add(code)
-            if len(results) >= limit:
-                break
+        if code.startswith(frag):
+            prefix_cus.append((code, None))
+        elif frag in code:
+            substr_cus.append((code, None))
 
-    return results
+    return prefix_std + prefix_cus + substr_std + substr_cus
 
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
