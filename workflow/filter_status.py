@@ -28,7 +28,6 @@ def _build_emoji_suggestions(raw, fragment):
         full_query = f"{prefix}:{code}: "
         item = {
             "title":        f":{code}:",
-            "subtitle":     char or "",
             "autocomplete": full_query,
             "valid":        False,
         }
