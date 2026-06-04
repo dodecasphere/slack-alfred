@@ -748,6 +748,19 @@ def write_current_status_cache(text, emoji, expiration):
         pass
 
 
+def _current_status_needs_rerun():
+    """True only when rerun is needed: loading state or sub-60s expiry countdown."""
+    cache = load_current_status_cache()
+    if cache is None:
+        return True
+    expiration = cache.get("status_expiration", 0)
+    if expiration:
+        remaining = expiration - time.time()
+        if 0 < remaining < 60:
+            return True
+    return False
+
+
 def _fetch_current_status_async(token):
     fetch_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_status.py")
     subprocess.Popen([sys.executable, fetch_script, token],

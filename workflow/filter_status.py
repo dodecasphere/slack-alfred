@@ -14,7 +14,7 @@ from common import (
     build_expiry_submenu, build_edit_submenu, _EDIT_INFIX,
     build_remove_confirm_submenu, build_token_submenu, build_setup_item,
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
-    build_current_status_item,
+    build_current_status_item, _current_status_needs_rerun,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -184,10 +184,10 @@ def main():
         })
 
     output = {"items": items}
-    # Re-run every second while the current status item is loading or active so
-    # the fetch resolves, expiry countdown ticks, and clears reflect immediately.
-    first = items[0].get("title", "") if items else ""
-    if first == "Fetching status…" or first.startswith("Current status: "):
+    # Rerun only when needed: loading state (until fetch resolves) or
+    # sub-60s countdown (seconds tick). All other states are static enough
+    # that rerunning would disrupt list navigation.
+    if not query and _current_status_needs_rerun():
         output["rerun"] = 1
     print(json.dumps(output))
 

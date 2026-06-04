@@ -679,6 +679,38 @@ class TestCurrentStatusCache(unittest.TestCase):
         self.assertIsNone(wf.load_current_status_cache())
 
 
+# ── _current_status_needs_rerun ──────────────────────────────────────────────
+
+class TestCurrentStatusNeedsRerun(unittest.TestCase):
+
+    def _needs(self, cache_data, now=FIXED_TIME):
+        with mock.patch("common.load_current_status_cache", return_value=cache_data), \
+             mock.patch("common.time") as mt:
+            mt.time.return_value = now
+            return wf._current_status_needs_rerun()
+
+    def test_cache_miss_needs_rerun(self):
+        self.assertTrue(self._needs(None))
+
+    def test_no_expiry_does_not_need_rerun(self):
+        self.assertFalse(self._needs({"status_text": "Focusing", "status_expiration": 0}))
+
+    def test_expiry_over_60s_does_not_need_rerun(self):
+        self.assertFalse(self._needs({"status_text": "Focusing", "status_expiration": FIXED_TIME + 61}))
+
+    def test_expiry_exactly_60s_does_not_need_rerun(self):
+        self.assertFalse(self._needs({"status_text": "Focusing", "status_expiration": FIXED_TIME + 60}))
+
+    def test_expiry_under_60s_needs_rerun(self):
+        self.assertTrue(self._needs({"status_text": "Focusing", "status_expiration": FIXED_TIME + 59}))
+
+    def test_expiry_in_past_does_not_need_rerun(self):
+        self.assertFalse(self._needs({"status_text": "Focusing", "status_expiration": FIXED_TIME - 1}))
+
+    def test_no_status_set_does_not_need_rerun(self):
+        self.assertFalse(self._needs({"status_text": "", "status_expiration": 0}))
+
+
 # ── build_current_status_item ─────────────────────────────────────────────────
 
 class TestBuildCurrentStatusItem(unittest.TestCase):
