@@ -38,11 +38,8 @@ def set_slack_status(token, text, emoji):
         return json.loads(resp.read().decode("utf-8"))
 
 
-def notify(message, is_error=False):
-    if is_error:
-        script = f'display dialog {json.dumps(message)} with title "Slack Status" buttons {{"OK"}} default button "OK" with icon stop'
-    else:
-        script = f'display notification {json.dumps(message)} with title "Slack Status"'
+def notify_error(detail=""):
+    script = f'display notification {json.dumps(detail)} with title "❌ Slack status not set"'
     subprocess.Popen(
         ["osascript", "-e", script],
         stdout=subprocess.DEVNULL,
@@ -86,13 +83,13 @@ def main():
 
     config = load_config()
     if not config or not config.get("token"):
-        notify("No token configured. Run 'slack' in Alfred to set up.", is_error=True)
+        notify_error("No token configured — run 'slack' in Alfred to set up.")
         return
 
     try:
         status = json.loads(arg)
     except json.JSONDecodeError:
-        notify(f"Couldn't parse response from Alfred: {arg!r}", is_error=True)
+        notify_error(f"Unexpected input: {arg!r}")
         return
 
     text = status.get("text", "")
@@ -101,14 +98,11 @@ def main():
     try:
         result = set_slack_status(config["token"], text, emoji)
     except Exception as e:
-        notify(f"Request failed: {e}", is_error=True)
+        notify_error(f"Request failed: {e}")
         return
 
-    if result.get("ok"):
-        msg = "Status cleared" if not text else f"{emoji} {text}".strip()
-        notify(msg)
-    else:
-        notify(f"Slack error: {result.get('error', 'unknown')}", is_error=True)
+    if not result.get("ok"):
+        notify_error(f"Slack API error: {result.get('error', 'unknown')}")
 
 
 if __name__ == "__main__":
