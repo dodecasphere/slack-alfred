@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from common import (
     load_config, load_usage, _usage_score,
-    TOKEN_ERROR_FLAG, CUSTOM_EMOJI_CACHE,
+    TOKEN_ERROR_FLAG, CUSTOM_EMOJI_CACHE, CUSTOM_EMOJI_IMAGES_DONE,
     _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
     DEFAULT_STATUSES, with_icon, compute_expiry_from_config, parse_custom_status,
     split_submenu_query, build_expiry_submenu, build_remove_confirm_submenu,
@@ -56,8 +56,10 @@ def main():
         print(json.dumps({"items": [build_setup_item()]}))
         return
 
-    # Ensure custom emoji are fetched for users who set up outside of save_token()
-    if not os.path.exists(CUSTOM_EMOJI_CACHE):
+    # Ensure custom emoji and their images are fetched. Re-triggers if either the
+    # JSON cache or the images-done sentinel is missing (covers existing users
+    # whose cache was written before image downloading was added).
+    if not os.path.exists(CUSTOM_EMOJI_CACHE) or not os.path.exists(CUSTOM_EMOJI_IMAGES_DONE):
         _refresh_custom_emoji_async()
 
     statuses = [s for s in config.get("statuses", DEFAULT_STATUSES)

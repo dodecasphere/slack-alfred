@@ -2,8 +2,9 @@
 """
 Fetches custom workspace emoji from Slack's emoji.list API, writes
 ~/.config/slack-alfred/custom_emoji.json, and downloads each image to
-the icon cache. Invoked asynchronously by filter_status.py when the
-cache is missing or stale. Requires the emoji:read scope on the token.
+the icon cache. Creates custom_emoji_images.done after images finish.
+Invoked asynchronously by filter_status.py when cache or images are
+missing or stale. Requires the emoji:read scope on the token.
 """
 import json
 import os
@@ -11,9 +12,10 @@ import time
 import urllib.parse
 import urllib.request
 
-CONFIG_FILE        = os.path.expanduser("~/.config/slack-alfred/config.json")
-CUSTOM_EMOJI_CACHE = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
-ICON_CACHE         = os.path.expanduser("~/.config/slack-alfred/icons")
+CONFIG_FILE               = os.path.expanduser("~/.config/slack-alfred/config.json")
+CUSTOM_EMOJI_CACHE        = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
+CUSTOM_EMOJI_IMAGES_DONE  = os.path.expanduser("~/.config/slack-alfred/custom_emoji_images.done")
+ICON_CACHE                = os.path.expanduser("~/.config/slack-alfred/icons")
 
 
 def _download_images(emoji_dict):
@@ -65,6 +67,9 @@ def main():
                   f, ensure_ascii=False)
 
     _download_images(emoji)
+
+    # Mark images as complete so filter_status.py stops re-triggering fetches
+    open(CUSTOM_EMOJI_IMAGES_DONE, "w").close()
 
 
 if __name__ == "__main__":

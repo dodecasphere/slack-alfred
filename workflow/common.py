@@ -11,7 +11,8 @@ CONFIG_FILE        = os.path.expanduser("~/.config/slack-alfred/config.json")
 ICON_CACHE         = os.path.expanduser("~/.config/slack-alfred/icons")
 USAGE_FILE         = os.path.expanduser("~/.config/slack-alfred/usage.json")
 TOKEN_ERROR_FLAG   = os.path.expanduser("~/.config/slack-alfred/token_error")
-CUSTOM_EMOJI_CACHE = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
+CUSTOM_EMOJI_CACHE        = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
+CUSTOM_EMOJI_IMAGES_DONE  = os.path.expanduser("~/.config/slack-alfred/custom_emoji_images.done")
 
 _EMOJI_LIST_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "emoji.json")
 _CUSTOM_EMOJI_TTL = 86400  # 24 hours
