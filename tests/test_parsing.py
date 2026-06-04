@@ -268,9 +268,21 @@ class TestParseCustomStatus(unittest.TestCase):
 
     def test_leading_slack_code(self):
         icon, emoji, text, ts, display, cfg = self._cs(":school: Going to school")
-        self.assertEqual(icon, "💬")
+        self.assertEqual(icon, ":school:")
         self.assertEqual(emoji, ":school:")
         self.assertEqual(text, "Going to school")
+
+    def test_leading_two_slack_codes(self):
+        icon, emoji, text, ts, display, cfg = self._cs(":custom: :headphones: On a call")
+        self.assertEqual(icon, ":custom:")
+        self.assertEqual(emoji, ":headphones:")
+        self.assertEqual(text, "On a call")
+
+    def test_leading_three_slack_codes(self):
+        icon, emoji, text, ts, display, cfg = self._cs(":custom: :headphones: :brain: focus")
+        self.assertEqual(icon, ":custom:")
+        self.assertEqual(emoji, ":headphones:")
+        self.assertEqual(text, ":brain: focus")
 
     def test_emoji_with_inline_slack_code(self):
         icon, emoji, text, ts, display, cfg = self._cs("🧠 :brain: deep focus")

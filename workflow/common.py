@@ -61,6 +61,19 @@ def _icon_name(emoji_char):
 def icon_path(emoji_char):
     if not emoji_char:
         return None
+    # ── :slack_code: reference ────────────────────────────────────────────────
+    if emoji_char.startswith(":") and emoji_char.endswith(":"):
+        name = emoji_char[1:-1]
+        for ext in (".png", ".gif", ".jpg"):
+            p = os.path.join(ICON_CACHE, f"{name}{ext}")
+            if os.path.exists(p):
+                return p
+        # Fall back to standard emoji Unicode char if available
+        char = _load_standard_emoji().get(name)
+        if char:
+            return icon_path(char)
+        return None
+    # ── Unicode emoji ─────────────────────────────────────────────────────────
     path = os.path.join(ICON_CACHE, f"{_icon_name(emoji_char)}.png")
     if os.path.exists(path):
         return path
@@ -258,15 +271,17 @@ def parse_custom_status(raw):
     Parse free-form query into (menu_icon, slack_emoji, status_text,
                                 expiry_ts, expiry_display, expiry_config).
 
-    '🧠 :brain: deep focus for 2h'       → ('🧠', ':brain:', 'deep focus', ts, 'expires in 2h', '2h')
-    '🏋️ at the gym until 5pm'            → ('🏋️', '🏋️',    'at the gym', ts, 'expires at 5:00 PM', '5pm')
-    '🏋️ at the gym'                      → ('🏋️', '🏋️',    'at the gym', 0, '', '')
-    ':school: Going to school'            → ('💬', ':school:', 'Going to school', 0, '', '')
-    ':school: :backpack: Going to school' → ('💬', ':school:', ':backpack: Going to school', 0, '', '')
-    'be right back'                       → ('💬', ':speech_balloon:', 'be right back', 0, '', '')
+    Leading codes follow a three-slot rule:
+      slot 1 (icon)  — Unicode emoji OR first :code: → used as Alfred menu icon
+      slot 2 (emoji) — second :code: (if present)   → sent to Slack as status emoji
+      slot 3+ (text) — everything else               → status text
 
-    In all cases, only the first :slack_code: is used as the Slack emoji; any
-    additional codes remain in the message text as written.
+    '🧠 :brain: deep focus'              → ('🧠',      ':brain:',  'deep focus', ...)
+    '🏋️ at the gym'                      → ('🏋️',      '🏋️',       'at the gym', ...)
+    ':school: Going to school'           → (':school:', ':school:', 'Going to school', ...)
+    ':custom: :headphones: On a call'    → (':custom:', ':headphones:', 'On a call', ...)
+    ':custom: :hphone: :brain: focus'    → (':custom:', ':hphone:',    ':brain: focus', ...)
+    'be right back'                      → ('💬',       ':speech_balloon:', 'be right back', ...)
     """
     icon_char, rest = split_emoji_prefix(raw)
 
@@ -274,10 +289,17 @@ def parse_custom_status(raw):
         # No leading Unicode emoji — check for a leading :slack_code:
         m = _SLACK_CODE.match(raw.strip())
         if m:
-            slack_emoji = m.group(1)
+            icon_char   = m.group(1)
             remaining   = raw.strip()[m.end():].strip()
+            # Second :code: (if present) becomes the Slack emoji
+            m2 = _SLACK_CODE.match(remaining)
+            if m2:
+                slack_emoji = m2.group(1)
+                remaining   = remaining[m2.end():].strip()
+            else:
+                slack_emoji = icon_char
             ts, display, cfg, clean = extract_expiry(remaining)
-            return "💬", slack_emoji, clean, ts, display, cfg
+            return icon_char, slack_emoji, clean, ts, display, cfg
         ts, display, cfg, clean = extract_expiry(raw.strip())
         return "💬", ":speech_balloon:", clean, ts, display, cfg
 

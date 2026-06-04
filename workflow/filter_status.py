@@ -132,8 +132,6 @@ def main():
 
         if icon_char == "💬" and slack_emoji == ":speech_balloon:":
             subtitle = "💬  Lead with an emoji for a custom icon"
-        elif icon_char == "💬":
-            subtitle = f"💬  {slack_emoji} Slack emoji"
         elif slack_emoji == icon_char:
             subtitle = f"{icon_char}  Icon & Slack emoji"
         else:
