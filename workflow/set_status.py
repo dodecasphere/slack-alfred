@@ -38,6 +38,18 @@ def set_slack_status(token, text, emoji):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def notify(message, is_error=False):
+    if is_error:
+        script = f'display dialog {json.dumps(message)} with title "Slack Status" buttons {{"OK"}} default button "OK" with icon stop'
+    else:
+        script = f'display notification {json.dumps(message)} with title "Slack Status"'
+    subprocess.Popen(
+        ["osascript", "-e", script],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def do_setup():
     subprocess.run(["open", SETUP_URL])
     # AppleScript dialog with step-by-step and a "Copy config command" button
@@ -74,13 +86,13 @@ def main():
 
     config = load_config()
     if not config or not config.get("token"):
-        print("No token configured. Run 'slack' in Alfred to set up.")
+        notify("No token configured. Run 'slack' in Alfred to set up.", is_error=True)
         return
 
     try:
         status = json.loads(arg)
     except json.JSONDecodeError:
-        print(f"Bad argument: {arg!r}")
+        notify(f"Couldn't parse response from Alfred: {arg!r}", is_error=True)
         return
 
     text = status.get("text", "")
@@ -89,13 +101,14 @@ def main():
     try:
         result = set_slack_status(config["token"], text, emoji)
     except Exception as e:
-        print(f"Request failed: {e}")
+        notify(f"Request failed: {e}", is_error=True)
         return
 
     if result.get("ok"):
-        print("Status cleared" if not text else f"Status set: {emoji} {text}".strip())
+        msg = "Status cleared" if not text else f"{emoji} {text}".strip()
+        notify(msg)
     else:
-        print(f"Slack error: {result.get('error', 'unknown')}")
+        notify(f"Slack error: {result.get('error', 'unknown')}", is_error=True)
 
 
 if __name__ == "__main__":
