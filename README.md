@@ -68,3 +68,13 @@ slacks 🧠 :brain: deep work until 5pm
 ## Config
 
 Presets are managed entirely from Alfred — no file editing needed. Your personal config lives at `~/.config/slack-alfred/config.json`
+
+## Testing
+
+The parsing logic (duration/time/expiry parsing, custom status syntax) has a unit test suite in `tests/`. No dependencies beyond the standard library.
+
+```bash
+python3 -m unittest discover tests
+```
+
+If you're contributing, please write tests for any new parsing behavior and make sure the full suite passes before opening a PR.
