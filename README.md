@@ -50,16 +50,20 @@ Type anything after `slacks` to set a one-off status:
 
 ### Expiry
 
-Append `for <duration>` or `until <time>` to any custom status:
+Append a duration or time to any custom status — the format determines which it is. `for` and `until` are accepted but optional:
 
 ```
+slacks 🎧 focusing 2h
+slacks lunch 45m
+slacks 🧠 :brain: deep work 5pm
 slacks 🎧 focusing for 2h
-slacks lunch for 45m
 slacks 🧠 :brain: deep work until 5pm
 ```
 
 **Duration formats:** `2m` `2min` `2mins` `2minutes` `2h` `2hr` `2hours` `1h30m` `1.5h`
 **Time formats:** `2pm` `2p` `2:30pm` `14:00` `noon` `midnight` `2 o'clock`
+
+A bare number ≤ 23 is treated as a clock hour (`5` → 5:00); a bare number > 23 is treated as hours (`24` → 24h).
 
 ## Presence (`slackp`)
 
