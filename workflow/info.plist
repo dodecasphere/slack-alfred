@@ -118,12 +118,8 @@
 		<dict>
 			<key>config</key>
 			<dict>
-				<key>lastpathcomponent</key>
-				<false/>
 				<key>onlyshowifquerypopulated</key>
 				<true/>
-				<key>removeextension</key>
-				<false/>
 				<key>text</key>
 				<string>{query}</string>
 				<key>title</key>
