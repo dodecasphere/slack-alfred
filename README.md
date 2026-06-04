@@ -73,6 +73,14 @@ A bare number ≤ 23 is treated as a clock hour (`5` → 5:00); a bare number > 
 
 Presets are managed entirely from Alfred — no file editing needed. Your personal config lives at `~/.config/slack-alfred/config.json`
 
+## Token management
+
+Your Slack token is stored in `config.json`. Tokens can be revoked at any time from the Slack app settings page.
+
+If a request is rejected due to an invalid or revoked token, you'll see an Alfred notification banner and the next time you open `slacks` only a single **⚠️ Token invalid** item will appear. Tab or → on it to enter the update flow, paste your new `xoxp-` token, then press Enter. The workflow resumes normally on the next use.
+
+To proactively rotate your token: get a new one from your Slack app's **OAuth & Permissions** page, then open `slacks`, Tab the warning item, and paste it in. If your token is still valid and you just want to replace it, you can also edit `~/.config/slack-alfred/config.json` directly.
+
 ## Testing
 
 The parsing logic (duration/time/expiry parsing, custom status syntax) has a unit test suite in `tests/`. No dependencies beyond the standard library.
