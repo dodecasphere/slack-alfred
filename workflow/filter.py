@@ -30,7 +30,8 @@ def load_config():
 
 
 def main():
-    query = sys.argv[1].strip().lower() if len(sys.argv) > 1 else ""
+    raw = sys.stdin.read().strip()
+    query = raw.lower()
     config = load_config()
 
     if not config or not config.get("token"):
@@ -64,9 +65,9 @@ def main():
     # Offer to set whatever the user typed as a custom status
     if query and not any(query == s["title"].lower() for s in statuses):
         items.append({
-            "title": f'Custom: "{sys.argv[1].strip()}"',
+            "title": f'Custom: "{raw}"',
             "subtitle": ":speech_balloon:  Set as custom status",
-            "arg": json.dumps({"text": sys.argv[1].strip(), "emoji": ":speech_balloon:"}),
+            "arg": json.dumps({"text": raw, "emoji": ":speech_balloon:"}),
             "valid": True,
         })
 
