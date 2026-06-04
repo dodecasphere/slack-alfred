@@ -1,17 +1,17 @@
 {
   "token": "xoxp-YOUR-TOKEN-HERE",
   "statuses": [
-    {"title": "Clear status",        "emoji": "",                        "text": "",                    "icon": "clear.png"},
-    {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "meeting.png"},
-    {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing",            "icon": "focusing.png"},
-    {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break",         "icon": "lunch.png"},
-    {"title": "Out sick",            "emoji": ":face_with_thermometer:", "text": "Out sick",            "icon": "sick.png"},
-    {"title": "Vacationing",         "emoji": ":palm_tree:",             "text": "Vacationing",         "icon": "vacation.png"},
-    {"title": "Working from home",   "emoji": ":house:",                 "text": "Working from home",   "icon": "wfh.png"},
-    {"title": "Do not disturb",      "emoji": ":no_entry_sign:",         "text": "Do not disturb",      "icon": "dnd.png"},
-    {"title": "Commuting",           "emoji": ":bus:",                   "text": "Commuting",           "icon": "commute.png"},
-    {"title": "Coffee break",        "emoji": ":coffee:",                "text": "Coffee break",        "icon": "coffee.png"},
-    {"title": "On a call",           "emoji": ":telephone_receiver:",    "text": "On a call",           "icon": "call.png"},
-    {"title": "Be right back",       "emoji": ":brb:",                   "text": "Be right back",       "icon": "brb.png"}
+    {"title": "Clear status",        "emoji": "",                        "text": "",                    "icon": "🧹"},
+    {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅"},
+    {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing",            "icon": "🎧"},
+    {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break",         "icon": "🍴"},
+    {"title": "Out sick",            "emoji": ":face_with_thermometer:", "text": "Out sick",            "icon": "🤒"},
+    {"title": "Vacationing",         "emoji": ":palm_tree:",             "text": "Vacationing",         "icon": "🌴"},
+    {"title": "Working from home",   "emoji": ":house:",                 "text": "Working from home",   "icon": "🏠"},
+    {"title": "Do not disturb",      "emoji": ":no_entry_sign:",         "text": "Do not disturb",      "icon": "🔕"},
+    {"title": "Commuting",           "emoji": ":bus:",                   "text": "Commuting",           "icon": "🚌"},
+    {"title": "Coffee break",        "emoji": ":coffee:",                "text": "Coffee break",        "icon": "☕"},
+    {"title": "On a call",           "emoji": ":telephone_receiver:",    "text": "On a call",           "icon": "📞"},
+    {"title": "Be right back",       "emoji": ":brb:",                   "text": "Be right back",       "icon": "🔙"}
   ]
 }
