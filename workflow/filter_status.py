@@ -7,11 +7,12 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from common import (
     load_config, load_usage, _usage_score,
-    TOKEN_ERROR_FLAG, _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
+    TOKEN_ERROR_FLAG, CUSTOM_EMOJI_CACHE,
+    _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
     DEFAULT_STATUSES, with_icon, compute_expiry_from_config, parse_custom_status,
     split_submenu_query, build_expiry_submenu, build_remove_confirm_submenu,
     build_token_submenu, build_setup_item, build_token_error_item,
-    search_emoji,
+    search_emoji, _refresh_custom_emoji_async,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -54,6 +55,10 @@ def main():
     if not config or not config.get("token"):
         print(json.dumps({"items": [build_setup_item()]}))
         return
+
+    # Ensure custom emoji are fetched for users who set up outside of save_token()
+    if not os.path.exists(CUSTOM_EMOJI_CACHE):
+        _refresh_custom_emoji_async()
 
     statuses = [s for s in config.get("statuses", DEFAULT_STATUSES)
                 if s.get("title") != "Clear status"]
