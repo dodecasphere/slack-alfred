@@ -26,7 +26,7 @@ Produces Alfred's JSON result list. Three modes based on the query:
 1. **Submenu** — query starts with `» ` (the `_SUBMENU_PREFIX` constant). Two sub-modes:
    - `» <title>` → expiry submenu (30m / 1h / 2h + Remove preset)
    - `» <title> » remove` → remove-confirmation submenu
-2. **Preset list** — empty or partial query; filters `statuses` from config. Each item gets `autocomplete: "» <title>"` so right-arrow enters the submenu.
+2. **Preset list** — empty or partial query; filters `statuses` from config. Each item gets `autocomplete: "» <title>"` so Tab enters the submenu.
 3. **Custom status** — typed query that doesn't match a preset title. Parses `parse_custom_status()` which understands leading emoji, `:slack_code:` injection, and trailing `for <duration>` / `until <time>` expiry syntax.
 
 Icon PNGs are cached at `~/.config/slack-alfred/icons/` via JXA (rendered at build time by `generate_icons.py`, then lazily on first use at runtime by `icon_path()`).
@@ -93,7 +93,7 @@ The Script Filter runs `filter.py`; the Run Script runs `set_status.py`. Both us
 
 ### Adding a new submenu
 
-All submenu routing flows through `filter.py::main()` based on the `_SUBMENU_PREFIX` (`"» "`) sentinel. The autocomplete value on a preset item sets what query Alfred sends when the user presses right-arrow. Extend the routing block to handle a new suffix pattern.
+All submenu routing flows through `filter.py::main()` based on the `_SUBMENU_PREFIX` (`"» "`) sentinel. The autocomplete value on a preset item sets what query Alfred sends when the user presses Tab. Extend the routing block to handle a new suffix pattern.
 
 ### Adding or changing expiry formats
 

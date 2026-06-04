@@ -30,7 +30,7 @@ Type `slack` in Alfred.
 
 - **Enter** — set the selected status
 - **⌘Enter** on a custom status — save it as a preset
-- **Right-arrow** any preset — set expiry or remove it
+- **Tab** on any preset — open expiry options or remove it
 - **⌘Enter** on an expiry option — update the preset's stored expiry
 
 ### Custom status syntax
@@ -53,9 +53,9 @@ slack lunch for 45m
 slack 🧠 :brain: deep work until 5pm
 ```
 
-**Duration formats:** `2m` `2min` `2mins` `2minutes` `2h` `2hr` `2hours` `1h30m` `1.5h`  
+**Duration formats:** `2m` `2min` `2mins` `2minutes` `2h` `2hr` `2hours` `1h30m` `1.5h`
 **Time formats:** `2pm` `2p` `2:30pm` `14:00` `noon` `midnight` `2 o'clock`
 
 ## Config
 
-Presets are managed entirely from Alfred — no file editing needed. Your config lives at `~/.config/slack-alfred/config.json` (gitignored, contains your token).
+Presets are managed entirely from Alfred — no file editing needed. Your personal config lives at `~/.config/slack-alfred/config.json`
