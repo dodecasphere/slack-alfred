@@ -46,7 +46,12 @@ Type anything after `slacks` to set a one-off status:
 |-------|------|-------------|------|
 | `be right back` | 💬 | `:speech_balloon:` | be right back |
 | `🏋️ at the gym` | 🏋️ | 🏋️ | at the gym |
+| `:brain: deep focus` | 🧠 | `:brain:` | deep focus |
 | `🧠 :brain: deep focus` | 🧠 | `:brain:` | deep focus |
+
+The last two rows produce the same result — leading with `:brain:` uses the emoji image as the Alfred icon automatically.
+
+Type `:` anywhere in your input to search and insert emoji. Results include both standard Slack emoji and your workspace's custom emoji.
 
 ### Expiry
 

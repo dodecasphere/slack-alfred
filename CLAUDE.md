@@ -136,6 +136,8 @@ Open Alfred Preferences → Workflows → select this workflow → click the bug
 
 If a feature seems risky or harder to build than it's worth, stop and present 2-3 options with tradeoffs before writing any code. Let the owner decide. Don't spiral in analysis — one sentence per option is enough.
 
+When updating the README: keep it concise and scannable — write for someone deciding in 30 seconds whether to install. No walls of text, no over-explaining. Bullet points over prose; cut anything that doesn't help a potential user decide.
+
 ## Gotchas and anti-patterns
 
 - **Do not use osascript multi-dialog chains for user input.** Only the first dialog in a chain shows reliably in Alfred's execution environment. Use Alfred-native UI instead: modifier keys (`mods.cmd`), `autocomplete` submenus, or the `valid: false` pattern to block a step.
