@@ -89,9 +89,6 @@ def parse_duration(text):
     if m:
         return int(float(m.group(1)) * 60)
 
-    if re.fullmatch(r'\d+', t):
-        return int(t) * 60
-
     return None
 
 
@@ -159,30 +156,60 @@ def _fmt_duration(secs):
     return f"{secs // 3600}h {(secs % 3600) // 60}m"
 
 
+def parse_expiry_token(text):
+    """
+    Parse a standalone expiry expression. Strips optional leading 'for'/'until'.
+    Returns (expiry_ts, display, config_str) or (None, None, None).
+
+    Bare integer ≤23 → nearest clock hour (time). Bare integer >23 → that many hours (duration).
+    Otherwise format determines type: explicit h/m units → duration; am/pm/colon → time.
+    """
+    inner = re.sub(r'^(?:for|until)\s+', '', text.strip(), flags=re.IGNORECASE).strip()
+
+    if re.fullmatch(r'\d+', inner):
+        n = int(inner)
+        if n <= 23:
+            ts, time_label = parse_until_time(inner)
+            if ts:
+                return ts, f"expires at {time_label}", inner
+        else:
+            secs = n * 3600
+            cfg = _fmt_duration(secs)
+            return int(time.time()) + secs, f"expires in {cfg}", cfg
+        return None, None, None
+
+    secs = parse_duration(inner)
+    if secs is not None:
+        cfg = _fmt_duration(secs)
+        return int(time.time()) + secs, f"expires in {cfg}", cfg
+
+    ts, time_label = parse_until_time(inner)
+    if ts:
+        return ts, f"expires at {time_label}", inner
+
+    return None, None, None
+
+
 def extract_expiry(text):
     """
-    Strip 'for <duration>' or 'until <time>' from the end of text.
+    Strip an expiry expression from the end of text. Accepts 'for <expr>',
+    'until <expr>', or a bare expiry as the last 1-2 words.
     Returns (expiry_ts, expiry_display, expiry_config_str, clean_text).
     expiry_ts=0 means no expiry.
     """
-    m = re.search(r'\bfor\s+(.+)$', text, re.IGNORECASE)
-    if m:
-        secs = parse_duration(m.group(1).strip())
-        if secs is not None:
-            label = _fmt_duration(secs)
-            return (int(time.time()) + secs,
-                    f"expires in {label}",
-                    label,
-                    text[:m.start()].strip())
+    for pattern in (r'\bfor\s+(.+)$', r'\buntil\s+(.+)$'):
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            ts, display, cfg = parse_expiry_token(m.group(1).strip())
+            if ts is not None:
+                return ts, display, cfg, text[:m.start()].strip()
 
-    m = re.search(r'\buntil\s+(.+)$', text, re.IGNORECASE)
-    if m:
-        ts, time_label = parse_until_time(m.group(1).strip())
-        if ts is not None:
-            return (ts,
-                    f"expires at {time_label}",
-                    m.group(1).strip(),
-                    text[:m.start()].strip())
+    words = text.split()
+    for n in (2, 1):
+        if len(words) > n:
+            ts, display, cfg = parse_expiry_token(" ".join(words[-n:]))
+            if ts is not None:
+                return ts, display, cfg, " ".join(words[:-n])
 
     return 0, "", "", text
 
@@ -323,22 +350,9 @@ def build_expiry_submenu(preset_title, custom, statuses):
 
     # ── Custom expiry (live-parsed as user types) ────────────────────────────
     if custom:
-        secs = parse_duration(custom)
-        if secs is not None:
-            cfg   = _fmt_duration(secs)
-            ts    = int(time.time()) + secs
-            label = f"Expire in {cfg}"
-            disp  = f"expires in {cfg}"
-        else:
-            ts, time_label = parse_until_time(custom)
-            if ts is not None:
-                cfg   = custom
-                label = f"Expire at {time_label}"
-                disp  = f"expires at {time_label}"
-            else:
-                ts = None
-
+        ts, disp, cfg = parse_expiry_token(custom)
         if ts is not None:
+            label    = "Expire" + disp[len("expires"):]
             arg_set  = json.dumps({"text": text, "emoji": emoji, "icon": icon_char,
                                    "expiry": ts, "expiry_config": cfg})
             arg_save = json.dumps({"action": "update_preset", "title": preset_title,
