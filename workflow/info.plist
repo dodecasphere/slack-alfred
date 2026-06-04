@@ -97,7 +97,7 @@
 				<key>runningsubtext</key>
 				<string>Loading statuses…</string>
 				<key>script</key>
-				<string>echo "{query}" | python3 filter.py</string>
+				<string>echo "{query}" | python3 filter_status.py</string>
 				<key>scriptargtype</key>
 				<integer>0</integer>
 				<key>scriptfile</key>

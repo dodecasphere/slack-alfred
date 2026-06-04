@@ -5,15 +5,9 @@ import subprocess
 import sys
 import urllib.request
 
-CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
-
-
-def load_config():
-    try:
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
+sys.path.insert(0, os.path.dirname(__file__))
+from common import (TOKEN_ERROR_FLAG, _AUTH_ERRORS,
+                    set_token_error_flag, clear_token_error_flag, load_config)
 
 
 def notify_error(detail=""):
@@ -22,8 +16,18 @@ def notify_error(detail=""):
 
 
 def main():
-    presence = sys.stdin.read().strip()
+    arg = sys.stdin.read().strip()
 
+    try:
+        data = json.loads(arg)
+        if isinstance(data, dict) and data.get("action") == "save_token":
+            import set_status
+            set_status.save_token(data)
+            return
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    presence = arg
     if presence not in ("auto", "away"):
         notify_error(f"Unknown presence value: {presence!r}")
         return
@@ -51,10 +55,14 @@ def main():
         return
 
     if result.get("ok"):
+        clear_token_error_flag()
         print("🧑‍💻  Active" if presence == "auto" else "🏃  Away")
     else:
         error = result.get("error", "unknown")
-        if error == "missing_scope":
+        if error in _AUTH_ERRORS:
+            set_token_error_flag()
+            print("❌ Token rejected — open Alfred and Tab the warning to update")
+        elif error == "missing_scope":
             notify_error("Add users:write scope to your Slack app — see README")
         else:
             notify_error(f"Slack API error: {error}")

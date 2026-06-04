@@ -3,62 +3,14 @@ import json
 import os
 import subprocess
 import sys
-import time
 import urllib.request
 
-CONFIG_FILE      = os.path.expanduser("~/.config/slack-alfred/config.json")
-USAGE_FILE       = os.path.expanduser("~/.config/slack-alfred/usage.json")
-TOKEN_ERROR_FLAG = os.path.expanduser("~/.config/slack-alfred/token_error")
-SETUP_URL        = "https://api.slack.com/apps"
+sys.path.insert(0, os.path.dirname(__file__))
+from common import (CONFIG_FILE, TOKEN_ERROR_FLAG, _AUTH_ERRORS,
+                    set_token_error_flag, clear_token_error_flag,
+                    record_usage, load_config)
 
-_AUTH_ERRORS = {"invalid_auth", "token_revoked", "account_inactive", "not_authed"}
-
-
-def set_token_error_flag():
-    try:
-        os.makedirs(os.path.dirname(TOKEN_ERROR_FLAG), exist_ok=True)
-        open(TOKEN_ERROR_FLAG, "w").close()
-    except Exception:
-        pass
-
-
-def clear_token_error_flag():
-    try:
-        os.remove(TOKEN_ERROR_FLAG)
-    except FileNotFoundError:
-        pass
-
-
-def load_usage():
-    try:
-        with open(USAGE_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def record_usage(title):
-    if not title:
-        return
-    usage = load_usage()
-    entry = usage.get(title, {"count": 0, "last_used": 0})
-    entry["count"] += 1
-    entry["last_used"] = int(time.time())
-    usage[title] = entry
-    try:
-        with open(USAGE_FILE, "w") as f:
-            json.dump(usage, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-    except Exception:
-        pass
-
-
-def load_config():
-    try:
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
+SETUP_URL = "https://api.slack.com/apps"
 
 
 def save_config(config):
@@ -182,7 +134,7 @@ def update_preset(status):
         error = result.get("error", "unknown")
         if error in _AUTH_ERRORS:
             set_token_error_flag()
-            print("❌ Token rejected — type slacks in Alfred and Tab to update")
+            print("❌ Token rejected — open Alfred and Tab the warning to update")
         else:
             notify_error(f"Slack API error: {error}")
 
@@ -302,7 +254,7 @@ def main():
         error = result.get("error", "unknown")
         if error in _AUTH_ERRORS:
             set_token_error_flag()
-            print("❌ Token rejected — type slacks in Alfred and Tab to update")
+            print("❌ Token rejected — open Alfred and Tab the warning to update")
         else:
             notify_error(f"Slack API error: {error}")
 

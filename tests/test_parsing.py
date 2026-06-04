@@ -6,19 +6,21 @@ Run with:  python3 -m unittest discover tests
        or: python3 tests/test_parsing.py
 """
 import importlib.util
+import json
 import os
 import sys
+import time
 import unittest
 from unittest import mock
 
 # Load workflow/filter.py under the name "workflow_filter" to avoid shadowing
 # Python's built-in filter() function.
 _spec = importlib.util.spec_from_file_location(
-    "workflow_filter",
-    os.path.join(os.path.dirname(__file__), "..", "workflow", "filter.py"),
+    "common",
+    os.path.join(os.path.dirname(__file__), "..", "workflow", "common.py"),
 )
 wf = importlib.util.module_from_spec(_spec)
-sys.modules["workflow_filter"] = wf
+sys.modules["common"] = wf
 _spec.loader.exec_module(wf)
 
 FIXED_TIME = 1_000_000  # frozen epoch used wherever time.time() is mocked
@@ -26,7 +28,7 @@ FIXED_TIME = 1_000_000  # frozen epoch used wherever time.time() is mocked
 
 def _with_time(fn, *args):
     """Call fn(*args) with time.time() frozen to FIXED_TIME."""
-    with mock.patch("workflow_filter.time") as mt:
+    with mock.patch("common.time") as mt:
         mt.time.return_value = FIXED_TIME
         return fn(*args)
 
@@ -76,7 +78,7 @@ class TestParseUntilTime(unittest.TestCase):
 
     def test_24h(self):
         _, label = wf.parse_until_time("17:00");  self.assertEqual(label, "5:00 PM")
-        _, label = wf.parse_until_time("9:00");   self.assertEqual(label, "9:00 AM")
+        _, label = wf.parse_until_time("21:00");  self.assertEqual(label, "9:00 PM")
 
     def test_with_minutes(self):
         _, label = wf.parse_until_time("5:30pm");  self.assertEqual(label, "5:30 PM")
@@ -296,6 +298,83 @@ class TestParseCustomStatus(unittest.TestCase):
         self.assertEqual(text, "deep focus")
         self.assertEqual(ts, 0)
         self.assertEqual(display, "")
+
+
+# ── _usage_score ──────────────────────────────────────────────────────────────
+
+class TestUsageScore(unittest.TestCase):
+
+    def test_unused_is_zero(self):
+        self.assertEqual(wf._usage_score({}), 0.0)
+        self.assertEqual(wf._usage_score({"count": 0}), 0.0)
+
+    def test_used_recently_above_frequency_floor(self):
+        score = wf._usage_score({"count": 1, "last_used": time.time()})
+        self.assertGreater(score, 3.0)  # count*3 + positive recency bonus
+
+    def test_frequency_dominates_over_recency(self):
+        now = time.time()
+        high_freq = wf._usage_score({"count": 10, "last_used": now - 60 * 86400})
+        low_freq  = wf._usage_score({"count": 1,  "last_used": now})
+        self.assertGreater(high_freq, low_freq)
+
+    def test_recency_decays_over_time(self):
+        now = time.time()
+        score_recent = wf._usage_score({"count": 1, "last_used": now})
+        score_old    = wf._usage_score({"count": 1, "last_used": now - 30 * 86400})
+        self.assertGreater(score_recent, score_old)
+
+    def test_sort_order_unused_last(self):
+        now = time.time()
+        statuses = [
+            {"title": "Unused",  "text": "", "emoji": ""},
+            {"title": "Popular", "text": "", "emoji": ""},
+        ]
+        usage = {"Popular": {"count": 5, "last_used": now}}
+        sorted_s = sorted(statuses,
+                          key=lambda s: (-wf._usage_score(usage.get(s["title"], {})),
+                                        s["title"].lower()))
+        self.assertEqual(sorted_s[0]["title"], "Popular")
+        self.assertEqual(sorted_s[1]["title"], "Unused")
+
+    def test_sort_order_unused_alphabetical(self):
+        statuses = [
+            {"title": "Zebra",  "text": "", "emoji": ""},
+            {"title": "Apple",  "text": "", "emoji": ""},
+            {"title": "Mango",  "text": "", "emoji": ""},
+        ]
+        sorted_s = sorted(statuses,
+                          key=lambda s: (-wf._usage_score({}), s["title"].lower()))
+        self.assertEqual([s["title"] for s in sorted_s], ["Apple", "Mango", "Zebra"])
+
+
+# ── build_token_submenu ───────────────────────────────────────────────────────
+
+class TestBuildTokenSubmenu(unittest.TestCase):
+
+    def test_empty_input_is_invalid(self):
+        items = wf.build_token_submenu("")
+        self.assertEqual(len(items), 1)
+        self.assertFalse(items[0]["valid"])
+        self.assertIn("xoxp-", items[0]["title"])
+
+    def test_valid_token_produces_save_item(self):
+        items = wf.build_token_submenu("xoxp-123-abc-xyz-000")
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["valid"])
+        self.assertIn("Save token", items[0]["title"])
+        arg = json.loads(items[0]["arg"])
+        self.assertEqual(arg["action"], "save_token")
+        self.assertEqual(arg["token"], "xoxp-123-abc-xyz-000")
+
+    def test_bare_xoxp_prefix_is_invalid(self):
+        items = wf.build_token_submenu("xoxp-")
+        self.assertFalse(items[0]["valid"])
+
+    def test_unrecognized_string_is_invalid(self):
+        items = wf.build_token_submenu("not-a-token")
+        self.assertEqual(len(items), 1)
+        self.assertFalse(items[0]["valid"])
 
 
 if __name__ == "__main__":

@@ -4,11 +4,13 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from filter import load_config, with_icon
+from common import (load_config, with_icon, TOKEN_ERROR_FLAG,
+                    _SUBMENU_PREFIX, _TOKEN_SUBMENU, build_token_submenu)
 
 
 def main():
-    query  = sys.stdin.read().strip().lower()
+    raw   = sys.stdin.read().strip()
+    query = raw.lower()
     config = load_config()
 
     if not config or not config.get("token"):
@@ -16,6 +18,22 @@ def main():
             "title":    "Setup Required — run 'slacks' first",
             "subtitle": "Your Slack token is not configured yet",
             "valid":    False,
+        }]}))
+        return
+
+    if raw.startswith(_SUBMENU_PREFIX):
+        inner = raw[len(_SUBMENU_PREFIX):]
+        if inner == _TOKEN_SUBMENU or inner.startswith(_TOKEN_SUBMENU + " "):
+            token_input = inner[len(_TOKEN_SUBMENU):].strip()
+            print(json.dumps({"items": build_token_submenu(token_input)}))
+            return
+
+    if os.path.exists(TOKEN_ERROR_FLAG):
+        print(json.dumps({"items": [{
+            "title":        "⚠️ Token invalid — Tab to update",
+            "subtitle":     "Slack rejected your token. Tab or → to paste a new one.",
+            "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
+            "valid":        False,
         }]}))
         return
 
