@@ -2,6 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Guiding Principles
+
+These are non-negotiable. Apply them to every feature, fix, and interaction.
+
+1. **Understand before building.** Ask questions until the feature is fully clear — no ambiguous requirements, no dangling edge cases. Don't start writing code until the design is settled.
+
+2. **Collaborate, don't just execute.** If you have thoughts on how to improve a feature request, say so. Surface tradeoffs, suggest alternatives. One sentence per option is enough — let the owner decide.
+
+3. **When stuck or the path is risky, present options.** Lay out 2–3 choices with tradeoffs before writing any code. Don't spiral in analysis.
+
+4. **TDD: tests first.** Write failing tests before implementing. Implement until they pass. Never commit a feature without tests. Always run the full suite before committing.
+
+5. **Complete the full cycle.** After every feature or meaningful bug fix: `./build.sh`, commit, push. All three, every time, without being asked.
+
+6. **Keep the README honest and scannable.** Update it for every user-facing change. Write for someone deciding in 30 seconds whether to install — no walls of text.
+
+7. **Suggest new ideas.** After building something, if you spot an opportunity to add usefulness, efficiency, magic, or fun to the user experience — say so. Don't wait to be asked. Imagination is an asset here.
+
 ## Build and install
 
 ```bash
