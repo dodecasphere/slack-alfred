@@ -7,9 +7,12 @@ import sys
 import time
 from datetime import datetime, timedelta
 
-CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
-ICON_CACHE  = os.path.expanduser("~/.config/slack-alfred/icons")
-USAGE_FILE  = os.path.expanduser("~/.config/slack-alfred/usage.json")
+CONFIG_FILE      = os.path.expanduser("~/.config/slack-alfred/config.json")
+ICON_CACHE       = os.path.expanduser("~/.config/slack-alfred/icons")
+USAGE_FILE       = os.path.expanduser("~/.config/slack-alfred/usage.json")
+TOKEN_ERROR_FLAG = os.path.expanduser("~/.config/slack-alfred/token_error")
+
+_TOKEN_SUBMENU = "Update Token"
 
 DEFAULT_STATUSES = [
     {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅"},
@@ -416,6 +419,24 @@ def build_remove_confirm_submenu(preset_title, statuses):
     ]
 
 
+# ── Token submenu ─────────────────────────────────────────────────────────────
+
+def build_token_submenu(token_input):
+    if not token_input:
+        return [{"title": "Paste your xoxp- token here",
+                 "subtitle": "Type or paste your Slack user OAuth token",
+                 "valid": False}]
+    if re.match(r'^xoxp-\S+', token_input):
+        display = token_input[:14] + "…" if len(token_input) > 18 else token_input
+        return [{"title": f"Save token: {display}",
+                 "subtitle": "Writes to config.json and clears the error flag",
+                 "arg": json.dumps({"action": "save_token", "token": token_input}),
+                 "valid": True}]
+    return [{"title": "Token not recognized",
+             "subtitle": "Should start with xoxp-",
+             "valid": False}]
+
+
 # ── Usage tracking ───────────────────────────────────────────────────────────
 
 def load_usage():
@@ -473,6 +494,9 @@ def main():
         if inner.endswith(_REMOVE_SUFFIX):
             preset_title = inner[:-len(_REMOVE_SUFFIX)]
             items = build_remove_confirm_submenu(preset_title, statuses)
+        elif inner == _TOKEN_SUBMENU or inner.startswith(_TOKEN_SUBMENU + " "):
+            token_input = inner[len(_TOKEN_SUBMENU):].strip()
+            items = build_token_submenu(token_input)
         else:
             title, custom = split_submenu_query(inner, statuses)
             items = build_expiry_submenu(title, custom, statuses)
@@ -480,6 +504,14 @@ def main():
         return
 
     items = []
+
+    if os.path.exists(TOKEN_ERROR_FLAG):
+        items.append({
+            "title":        "⚠️ Token invalid — Tab to update",
+            "subtitle":     "Slack rejected your token. Tab or → to paste a new one.",
+            "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
+            "valid":        False,
+        })
 
     # Clear status — hardcoded, no submenu
     if not query or query in "clear status":

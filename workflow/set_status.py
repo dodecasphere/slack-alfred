@@ -6,9 +6,27 @@ import sys
 import time
 import urllib.request
 
-CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
-USAGE_FILE  = os.path.expanduser("~/.config/slack-alfred/usage.json")
-SETUP_URL = "https://api.slack.com/apps"
+CONFIG_FILE      = os.path.expanduser("~/.config/slack-alfred/config.json")
+USAGE_FILE       = os.path.expanduser("~/.config/slack-alfred/usage.json")
+TOKEN_ERROR_FLAG = os.path.expanduser("~/.config/slack-alfred/token_error")
+SETUP_URL        = "https://api.slack.com/apps"
+
+_AUTH_ERRORS = {"invalid_auth", "token_revoked", "account_inactive", "not_authed"}
+
+
+def set_token_error_flag():
+    try:
+        os.makedirs(os.path.dirname(TOKEN_ERROR_FLAG), exist_ok=True)
+        open(TOKEN_ERROR_FLAG, "w").close()
+    except Exception:
+        pass
+
+
+def clear_token_error_flag():
+    try:
+        os.remove(TOKEN_ERROR_FLAG)
+    except FileNotFoundError:
+        pass
 
 
 def load_usage():
@@ -157,10 +175,34 @@ def update_preset(status):
 
     if result.get("ok"):
         record_usage(title)
+        clear_token_error_flag()
         suffix = f" · {expiry_config} expiry saved" if expiry_config else ""
         print(f"{icon_char}  {text}{suffix}" if icon_char else f"{text}{suffix}")
     else:
-        notify_error(f"Slack API error: {result.get('error', 'unknown')}")
+        error = result.get("error", "unknown")
+        if error in _AUTH_ERRORS:
+            set_token_error_flag()
+            notify_error("Token invalid — open Alfred (slacks) and Tab to update it")
+        else:
+            notify_error(f"Slack API error: {error}")
+
+
+def save_token(status):
+    token = status.get("token", "").strip()
+    if not token.startswith("xoxp-"):
+        notify_error("Token must start with xoxp-")
+        return
+
+    config = load_config() or {}
+    config["token"] = token
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't save token: {e}")
+        return
+
+    clear_token_error_flag()
+    print("✓  Token saved")
 
 
 def remove_preset(status):
@@ -229,6 +271,7 @@ def main():
         "save_preset":   save_preset,
         "update_preset": update_preset,
         "remove_preset": remove_preset,
+        "save_token":    save_token,
     }
     handler = _ACTIONS.get(status.get("action"))
     if handler:
@@ -247,6 +290,7 @@ def main():
 
     if result.get("ok"):
         record_usage(status.get("title"))
+        clear_token_error_flag()
         icon_char = status.get("icon", "")
         if not text:
             print("Status cleared")
@@ -255,7 +299,12 @@ def main():
         else:
             print(text)
     else:
-        notify_error(f"Slack API error: {result.get('error', 'unknown')}")
+        error = result.get("error", "unknown")
+        if error in _AUTH_ERRORS:
+            set_token_error_flag()
+            notify_error("Token invalid — open Alfred (slacks) and Tab to update it")
+        else:
+            notify_error(f"Slack API error: {error}")
 
 
 if __name__ == "__main__":
