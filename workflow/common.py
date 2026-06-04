@@ -50,7 +50,8 @@ str.drawAtPointWithAttributes($.NSMakePoint((size-sz.width)/2,(size-sz.height)/2
 rep.representationUsingTypeProperties(4,ObjC.wrap({})).writeToFileAtomically(out,true);
 """
 
-_SLACK_CODE = re.compile(r'(:[a-z0-9_+\-]+:)', re.IGNORECASE)
+_SLACK_CODE     = re.compile(r'(:[a-z0-9_+\-]+:)', re.IGNORECASE)
+_BRACKET_TITLE  = re.compile(r'^\[([^\]]+)\]\s*')
 
 
 # ── Icon cache ────────────────────────────────────────────────────────────────
@@ -283,6 +284,14 @@ def split_emoji_prefix(text):
     if len(parts) == 2 and parts[1] and ord(parts[0][0]) > 0x00FF:
         return parts[0], parts[1].strip()
     return None, text
+
+
+def extract_bracket_title(raw):
+    """Strip a leading [Title] from raw; return (title_or_None, remaining_raw)."""
+    m = _BRACKET_TITLE.match(raw)
+    if m:
+        return m.group(1).strip(), raw[m.end():]
+    return None, raw
 
 
 def parse_custom_status(raw):

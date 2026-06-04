@@ -34,7 +34,8 @@ To rebuild after changes:
 ## Status (`slacks`)
 
 - **Enter** — set the selected status
-- **⌘Enter** on a custom status — save it as a preset
+- **⌘Enter** on a custom status — save it as a preset (title defaults to the status text)
+- Prefix with `[My Title]` to save under a custom preset name: `[Beach day] :beach_with_umbrella: at the beach`
 - **Tab** on any preset — open expiry options or remove it
 - **⌘Enter** on an expiry option — update the preset's stored expiry
 

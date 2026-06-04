@@ -10,7 +10,7 @@ from common import (
     TOKEN_ERROR_FLAG, CUSTOM_EMOJI_CACHE, CUSTOM_EMOJI_IMAGES_DONE,
     _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
     DEFAULT_STATUSES, with_icon, cached_icon_path, compute_expiry_from_config,
-    parse_custom_status, split_submenu_query, build_expiry_submenu,
+    parse_custom_status, extract_bracket_title, split_submenu_query, build_expiry_submenu,
     build_remove_confirm_submenu, build_token_submenu, build_setup_item,
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
 )
@@ -135,8 +135,9 @@ def main():
 
     # Custom status
     if query and not any(query == s["title"].lower() for s in statuses):
+        bracket_title, raw_for_parse = extract_bracket_title(raw)
         icon_char, slack_emoji, status_text, expiry_ts, expiry_display, expiry_config = \
-            parse_custom_status(raw)
+            parse_custom_status(raw_for_parse)
 
         if icon_char == "💬" and slack_emoji == ":speech_balloon:":
             subtitle = "💬  Lead with an emoji for a custom icon"
@@ -147,13 +148,21 @@ def main():
 
         if expiry_display:
             subtitle += f" · {expiry_display}"
-        subtitle += " · ⌘↩ to save as preset"
+        if bracket_title:
+            subtitle += f" · ⌘↩ to save as \"{bracket_title}\""
+        else:
+            subtitle += " · ⌘↩ to save as preset"
 
         set_arg  = json.dumps({"text": status_text, "emoji": slack_emoji, "icon": icon_char,
                                "expiry": expiry_ts, "expiry_config": expiry_config})
-        save_arg = json.dumps({"text": status_text, "emoji": slack_emoji, "icon": icon_char,
-                               "expiry": expiry_ts, "expiry_config": expiry_config,
-                               "action": "save_preset"})
+        save_arg_d = {"text": status_text, "emoji": slack_emoji, "icon": icon_char,
+                      "expiry": expiry_ts, "expiry_config": expiry_config,
+                      "action": "save_preset"}
+        if bracket_title:
+            save_arg_d["title"] = bracket_title
+        save_arg = json.dumps(save_arg_d)
+
+        save_subtitle = f"Save as \"{bracket_title}\"" if bracket_title else f"{icon_char}  Save as preset"
         items.append(with_icon({
             "title":    f'Custom: "{status_text}"',
             "subtitle": subtitle,
@@ -161,7 +170,7 @@ def main():
             "valid":    True,
             "mods": {
                 "cmd": {
-                    "subtitle": f"{icon_char}  Save as preset",
+                    "subtitle": save_subtitle,
                     "arg":      save_arg,
                     "valid":    True,
                 }

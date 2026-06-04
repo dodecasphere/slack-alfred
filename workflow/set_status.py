@@ -48,6 +48,7 @@ def save_preset(status):
     text  = status.get("text", "").strip()
     icon  = status.get("icon", "💬").strip()
     emoji = status.get("emoji", "").strip()
+    title = status.get("title", "").strip() or text
 
     if not text:
         notify_error("No status text to save.")
@@ -59,12 +60,12 @@ def save_preset(status):
         return
 
     statuses = config.get("statuses", [])
-    if any(s.get("title") == text for s in statuses):
-        print(f"Already in presets: {text}")
+    if any(s.get("title") == title for s in statuses):
+        print(f"Already in presets: {title}")
         return
 
     expiry_config = status.get("expiry_config", "")
-    entry = {"title": text, "text": text, "emoji": emoji, "icon": icon}
+    entry = {"title": title, "text": text, "emoji": emoji, "icon": icon}
     if expiry_config:
         entry["expiry"] = expiry_config
     statuses.append(entry)
