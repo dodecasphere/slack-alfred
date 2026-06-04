@@ -506,12 +506,13 @@ def main():
     items = []
 
     if os.path.exists(TOKEN_ERROR_FLAG):
-        items.append({
+        print(json.dumps({"items": [{
             "title":        "⚠️ Token invalid — Tab to update",
             "subtitle":     "Slack rejected your token. Tab or → to paste a new one.",
             "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
             "valid":        False,
-        })
+        }]}))
+        return
 
     # Clear status — hardcoded, no submenu
     if not query or query in "clear status":

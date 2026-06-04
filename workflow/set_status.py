@@ -182,7 +182,7 @@ def update_preset(status):
         error = result.get("error", "unknown")
         if error in _AUTH_ERRORS:
             set_token_error_flag()
-            notify_error("Token invalid — open Alfred (slacks) and Tab to update it")
+            print("❌ Token rejected — type slacks in Alfred and Tab to update")
         else:
             notify_error(f"Slack API error: {error}")
 
@@ -302,7 +302,7 @@ def main():
         error = result.get("error", "unknown")
         if error in _AUTH_ERRORS:
             set_token_error_flag()
-            notify_error("Token invalid — open Alfred (slacks) and Tab to update it")
+            print("❌ Token rejected — type slacks in Alfred and Tab to update")
         else:
             notify_error(f"Slack API error: {error}")
 
