@@ -429,7 +429,7 @@ def build_token_submenu(token_input):
     if re.match(r'^xoxp-\S+', token_input):
         display = token_input[:14] + "…" if len(token_input) > 18 else token_input
         return [{"title": f"Save token: {display}",
-                 "subtitle": "Writes to config.json and clears the error flag",
+                 "subtitle": "Saves the token to local config",
                  "arg": json.dumps({"action": "save_token", "token": token_input}),
                  "valid": True}]
     return [{"title": "Token not recognized",
