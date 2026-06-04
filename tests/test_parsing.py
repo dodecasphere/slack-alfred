@@ -491,5 +491,88 @@ class TestSearchEmoji(unittest.TestCase):
         self.assertIsNone(results[0][1])
 
 
+# ── build_edit_submenu ────────────────────────────────────────────────────────
+
+class TestBuildEditSubmenu(unittest.TestCase):
+
+    STATUSES = [
+        {"title": "Focusing",  "emoji": ":headphones:", "text": "Focusing",  "icon": "🎧"},
+        {"title": "Deep work", "emoji": ":brain:",      "text": "Deep work", "icon": ":brain:"},
+    ]
+
+    def test_unknown_preset_returns_error_item(self):
+        items = wf.build_edit_submenu("Ghost", "", self.STATUSES)
+        self.assertEqual(len(items), 1)
+        self.assertFalse(items[0].get("valid", True))
+
+    def test_empty_query_returns_single_prompt_item(self):
+        items = wf.build_edit_submenu("Focusing", "", self.STATUSES)
+        self.assertEqual(len(items), 1)
+        self.assertFalse(items[0].get("valid", True))
+
+    def test_empty_query_autocomplete_contains_edit_infix(self):
+        items = wf.build_edit_submenu("Focusing", "", self.STATUSES)
+        ac = items[0].get("autocomplete", "")
+        self.assertIn("» edit", ac)
+
+    def test_empty_query_prefill_contains_current_values(self):
+        items = wf.build_edit_submenu("Focusing", "", self.STATUSES)
+        ac = items[0].get("autocomplete", "")
+        self.assertIn("[Focusing]", ac)
+        self.assertIn("🎧", ac)
+        self.assertIn(":headphones:", ac)
+        self.assertIn("Focusing", ac)
+
+    def test_prefill_no_duplicate_code_when_icon_equals_emoji(self):
+        items = wf.build_edit_submenu("Deep work", "", self.STATUSES)
+        ac = items[0].get("autocomplete", "")
+        self.assertNotIn(":brain: :brain:", ac)
+
+    def test_prefill_includes_both_when_icon_differs_from_emoji(self):
+        items = wf.build_edit_submenu("Focusing", "", self.STATUSES)
+        ac = items[0].get("autocomplete", "")
+        self.assertIn("🎧", ac)
+        self.assertIn(":headphones:", ac)
+
+    def test_valid_query_returns_save_item(self):
+        items = wf.build_edit_submenu("Focusing", "[My Focus] :brain: Deep work", self.STATUSES)
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0].get("valid", False))
+
+    def test_valid_query_arg_has_edit_preset_action(self):
+        items = wf.build_edit_submenu("Focusing", "[My Focus] :brain: Deep work", self.STATUSES)
+        arg = json.loads(items[0]["arg"])
+        self.assertEqual(arg["action"], "edit_preset")
+
+    def test_valid_query_arg_preserves_original_title_for_lookup(self):
+        items = wf.build_edit_submenu("Focusing", "[My Focus] :brain: Deep work", self.STATUSES)
+        arg = json.loads(items[0]["arg"])
+        self.assertEqual(arg["title"], "Focusing")
+
+    def test_valid_query_with_bracket_sets_new_title(self):
+        items = wf.build_edit_submenu("Focusing", "[My Focus] :brain: Deep work", self.STATUSES)
+        arg = json.loads(items[0]["arg"])
+        self.assertEqual(arg["new_title"], "My Focus")
+
+    def test_valid_query_without_bracket_has_no_new_title(self):
+        items = wf.build_edit_submenu("Focusing", ":headphones: New text", self.STATUSES)
+        arg = json.loads(items[0]["arg"])
+        self.assertNotIn("new_title", arg)
+
+    def test_valid_query_arg_has_correct_text_and_emoji(self):
+        items = wf.build_edit_submenu("Focusing", "[My Focus] :brain: Deep work", self.STATUSES)
+        arg = json.loads(items[0]["arg"])
+        self.assertEqual(arg["text"], "Deep work")
+        self.assertEqual(arg["emoji"], ":brain:")
+
+    def test_save_item_title_shows_new_title_when_renamed(self):
+        items = wf.build_edit_submenu("Focusing", "[My Focus] :brain: Deep work", self.STATUSES)
+        self.assertIn("My Focus", items[0]["title"])
+
+    def test_save_item_title_shows_original_title_when_not_renamed(self):
+        items = wf.build_edit_submenu("Focusing", ":headphones: New text", self.STATUSES)
+        self.assertIn("Focusing", items[0]["title"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

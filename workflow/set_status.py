@@ -139,6 +139,58 @@ def update_preset(status):
             notify_error(f"Slack API error: {error}")
 
 
+def edit_preset(status):
+    title     = status.get("title", "").strip()
+    new_title = status.get("new_title", "").strip()
+    text      = status.get("text", "").strip()
+    emoji     = status.get("emoji", "").strip()
+    icon      = status.get("icon", "").strip()
+
+    if not title:
+        notify_error("No preset title specified.")
+        return
+
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    statuses = config.get("statuses", [])
+
+    if new_title and new_title != title:
+        if any(s.get("title") == new_title for s in statuses):
+            notify_error(f"Preset already exists: {new_title}")
+            return
+
+    updated = False
+    for s in statuses:
+        if s.get("title") == title:
+            if new_title:
+                s["title"] = new_title
+            if text:
+                s["text"] = text
+            if emoji:
+                s["emoji"] = emoji
+            if icon:
+                s["icon"] = icon
+            updated = True
+            break
+
+    if not updated:
+        notify_error(f"Preset not found: {title}")
+        return
+
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't update preset: {e}")
+        return
+
+    display_title = new_title or title
+    display_icon  = icon or ""
+    print(f"{display_icon}  Preset updated: {display_title}" if display_icon else f"Preset updated: {display_title}")
+
+
 def save_token(status):
     token = status.get("token", "").strip()
     if not token.startswith("xoxp-"):
@@ -207,6 +259,7 @@ def main():
     _ACTIONS = {
         "save_preset":   save_preset,
         "update_preset": update_preset,
+        "edit_preset":   edit_preset,
         "remove_preset": remove_preset,
         "save_token":    save_token,
     }

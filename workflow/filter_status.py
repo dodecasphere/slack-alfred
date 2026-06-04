@@ -10,7 +10,8 @@ from common import (
     TOKEN_ERROR_FLAG, CUSTOM_EMOJI_CACHE, CUSTOM_EMOJI_IMAGES_DONE,
     _SUBMENU_PREFIX, _REMOVE_SUFFIX, _TOKEN_SUBMENU,
     DEFAULT_STATUSES, with_icon, cached_icon_path, compute_expiry_from_config,
-    parse_custom_status, extract_bracket_title, split_submenu_query, build_expiry_submenu,
+    parse_custom_status, extract_bracket_title, split_submenu_query,
+    build_expiry_submenu, build_edit_submenu, _EDIT_INFIX,
     build_remove_confirm_submenu, build_token_submenu, build_setup_item,
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
 )
@@ -79,7 +80,11 @@ def main():
             items = build_remove_confirm_submenu(preset_title, statuses)
         else:
             title, custom = split_submenu_query(inner, statuses)
-            items = build_expiry_submenu(title, custom, statuses)
+            if custom == _EDIT_INFIX or custom.startswith(_EDIT_INFIX + " "):
+                edit_query = custom[len(_EDIT_INFIX):].strip()
+                items = build_edit_submenu(title, edit_query, statuses)
+            else:
+                items = build_expiry_submenu(title, custom, statuses)
         print(json.dumps({"items": items}))
         return
 

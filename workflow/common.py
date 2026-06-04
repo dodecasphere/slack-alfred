@@ -21,6 +21,7 @@ _AUTH_ERRORS    = {"invalid_auth", "token_revoked", "account_inactive", "not_aut
 
 _SUBMENU_PREFIX = "» "
 _REMOVE_SUFFIX  = " » remove"
+_EDIT_INFIX     = "» edit"
 _TOKEN_SUBMENU  = "Update Token"
 
 DEFAULT_STATUSES = [
@@ -440,6 +441,14 @@ def build_expiry_submenu(preset_title, custom, statuses):
             "valid":    False,
         }, "⏲️")
 
+    # ── Edit preset ──────────────────────────────────────────────────────────
+    edit_item = with_icon({
+        "title":        "Edit preset…",
+        "subtitle":     f"Change title, emoji, or text",
+        "autocomplete": f"{_SUBMENU_PREFIX}{preset_title} {_EDIT_INFIX} {_preset_prefill(preset)}",
+        "valid":        False,
+    }, "✏️")
+
     # ── Remove preset (last item) ────────────────────────────────────────────
     remove_item = with_icon({
         "title":        "Remove preset",
@@ -448,7 +457,56 @@ def build_expiry_submenu(preset_title, custom, statuses):
         "valid":        False,
     }, "❌")
 
-    return [set_item] + duration_items + [custom_item, remove_item]
+    return [set_item] + duration_items + [custom_item, edit_item, remove_item]
+
+
+def _preset_prefill(preset):
+    """Build the pre-filled edit string for a preset: '[title] icon emoji text'."""
+    title     = preset["title"]
+    icon_char = preset.get("icon", "")
+    emoji     = preset["emoji"]
+    text      = preset["text"]
+    if icon_char and icon_char != emoji:
+        return f"[{title}] {icon_char} {emoji} {text}"
+    return f"[{title}] {emoji} {text}"
+
+
+def build_edit_submenu(preset_title, edit_query, statuses):
+    preset = next((s for s in statuses if s["title"] == preset_title), None)
+    if not preset:
+        return [{"title": f"Preset not found: {preset_title!r}", "valid": False}]
+
+    if not edit_query:
+        return [with_icon({
+            "title":        "Edit preset…",
+            "subtitle":     "Tab to edit title, emoji, and text",
+            "autocomplete": f"{_SUBMENU_PREFIX}{preset_title} {_EDIT_INFIX} {_preset_prefill(preset)}",
+            "valid":        False,
+        }, "✏️")]
+
+    bracket_title, raw_for_parse = extract_bracket_title(edit_query)
+    icon_char, slack_emoji, text, _, _, _ = parse_custom_status(raw_for_parse)
+
+    if not text:
+        return [with_icon({
+            "title":   "Type the new status text",
+            "subtitle": "e.g. [New Title] :emoji: New text",
+            "valid":    False,
+        }, "✏️")]
+
+    arg = {"action": "edit_preset", "title": preset_title,
+           "text": text, "emoji": slack_emoji, "icon": icon_char}
+    if bracket_title:
+        arg["new_title"] = bracket_title
+
+    display_title = bracket_title or preset_title
+    sub = f"{slack_emoji}  {text}" if slack_emoji else text
+    return [with_icon({
+        "title":    f"Save \"{display_title}\"",
+        "subtitle": sub,
+        "arg":      json.dumps(arg),
+        "valid":    True,
+    }, "✏️")]
 
 
 def build_remove_confirm_submenu(preset_title, statuses):
