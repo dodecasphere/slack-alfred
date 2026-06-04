@@ -6,18 +6,18 @@ import sys
 CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
 
 DEFAULT_STATUSES = [
-    {"title": "Clear status",        "emoji": "",                       "text": ""},
-    {"title": "In a meeting",        "emoji": ":calendar:",             "text": "In a meeting"},
-    {"title": "Focusing",            "emoji": ":headphones:",           "text": "Focusing"},
-    {"title": "Lunch break",         "emoji": ":fork_and_knife:",       "text": "Lunch break"},
-    {"title": "Out sick",            "emoji": ":face_with_thermometer:","text": "Out sick"},
-    {"title": "Vacationing",         "emoji": ":palm_tree:",            "text": "Vacationing"},
-    {"title": "Working from home",   "emoji": ":house:",                "text": "Working from home"},
-    {"title": "Do not disturb",      "emoji": ":no_entry_sign:",        "text": "Do not disturb"},
-    {"title": "Commuting",           "emoji": ":bus:",                  "text": "Commuting"},
-    {"title": "Coffee break",        "emoji": ":coffee:",               "text": "Coffee break"},
-    {"title": "On a call",           "emoji": ":telephone_receiver:",   "text": "On a call"},
-    {"title": "Be right back",       "emoji": ":brb:",                  "text": "Be right back"},
+    {"title": "Clear status",        "emoji": "",                        "text": "",                    "icon": "clear.png"},
+    {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "meeting.png"},
+    {"title": "Focusing",            "emoji": ":headphones:",            "text": "Focusing",            "icon": "focusing.png"},
+    {"title": "Lunch break",         "emoji": ":fork_and_knife:",        "text": "Lunch break",         "icon": "lunch.png"},
+    {"title": "Out sick",            "emoji": ":face_with_thermometer:", "text": "Out sick",            "icon": "sick.png"},
+    {"title": "Vacationing",         "emoji": ":palm_tree:",             "text": "Vacationing",         "icon": "vacation.png"},
+    {"title": "Working from home",   "emoji": ":house:",                 "text": "Working from home",   "icon": "wfh.png"},
+    {"title": "Do not disturb",      "emoji": ":no_entry_sign:",         "text": "Do not disturb",      "icon": "dnd.png"},
+    {"title": "Commuting",           "emoji": ":bus:",                   "text": "Commuting",           "icon": "commute.png"},
+    {"title": "Coffee break",        "emoji": ":coffee:",                "text": "Coffee break",        "icon": "coffee.png"},
+    {"title": "On a call",           "emoji": ":telephone_receiver:",    "text": "On a call",           "icon": "call.png"},
+    {"title": "Be right back",       "emoji": ":brb:",                   "text": "Be right back",       "icon": "brb.png"},
 ]
 
 
@@ -27,6 +27,10 @@ def load_config():
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+def icon(filename):
+    return {"path": f"icons/{filename}"}
 
 
 def main():
@@ -41,6 +45,7 @@ def main():
                 "subtitle": "Opens Slack API page to generate your token",
                 "arg": "setup",
                 "valid": True,
+                "icon": icon("setup.png"),
             }]
         }))
         return
@@ -55,12 +60,15 @@ def main():
             continue
 
         subtitle = f"{s['emoji']}  {s['text']}" if s["emoji"] else "Clear your current status"
-        items.append({
+        item = {
             "title": s["title"],
             "subtitle": subtitle,
             "arg": json.dumps({"text": s["text"], "emoji": s["emoji"]}),
             "valid": True,
-        })
+        }
+        if s.get("icon"):
+            item["icon"] = icon(s["icon"])
+        items.append(item)
 
     # Offer to set whatever the user typed as a custom status
     if query and not any(query == s["title"].lower() for s in statuses):
@@ -69,12 +77,13 @@ def main():
             "subtitle": ":speech_balloon:  Set as custom status",
             "arg": json.dumps({"text": raw, "emoji": ":speech_balloon:"}),
             "valid": True,
+            "icon": icon("custom.png"),
         })
 
     if not items:
         items.append({
             "title": "No matching statuses",
-            "subtitle": 'Keep typing to create a custom status',
+            "subtitle": "Keep typing to create a custom status",
             "valid": False,
         })
 
