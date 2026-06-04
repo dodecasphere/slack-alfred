@@ -9,7 +9,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 from common import (CONFIG_FILE, TOKEN_ERROR_FLAG, _AUTH_ERRORS,
                     set_token_error_flag, clear_token_error_flag,
                     record_usage, load_config, do_setup,
-                    _refresh_custom_emoji_async, write_current_status_cache)
+                    _refresh_custom_emoji_async, write_current_status_cache,
+                    record_recent_status)
 
 
 def save_config(config):
@@ -282,6 +283,9 @@ def main():
         record_usage(status.get("title"))
         clear_token_error_flag()
         write_current_status_cache(text, emoji, expiry)
+        if text and not status.get("title"):
+            record_recent_status(text, emoji, status.get("icon", ""),
+                                 status.get("expiry_config", ""))
         icon_char = status.get("icon", "")
         if not text:
             print("Status cleared")

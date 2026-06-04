@@ -14,8 +14,10 @@ TOKEN_ERROR_FLAG   = os.path.expanduser("~/.config/slack-alfred/token_error")
 CUSTOM_EMOJI_CACHE        = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
 CUSTOM_EMOJI_IMAGES_DONE  = os.path.expanduser("~/.config/slack-alfred/custom_emoji_images.done")
 CURRENT_STATUS_CACHE      = os.path.expanduser("~/.config/slack-alfred/current_status.json")
+RECENT_STATUSES_FILE      = os.path.expanduser("~/.config/slack-alfred/recent_statuses.json")
 
-_CURRENT_STATUS_TTL = 60  # seconds
+_CURRENT_STATUS_TTL  = 60   # seconds
+_RECENT_STATUSES_MAX = 10
 
 _EMOJI_LIST_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "emoji.json")
 _CUSTOM_EMOJI_TTL = 86400  # 24 hours
@@ -703,6 +705,79 @@ def build_token_error_item():
         "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
         "valid":        False,
     }
+
+
+# ── Recent statuses ───────────────────────────────────────────────────────────
+
+def format_relative_time(ts):
+    diff = time.time() - ts
+    if diff < 60:
+        return "just now"
+    if diff < 3600:
+        return f"{int(diff // 60)}m ago"
+    if diff < 86400:
+        return f"{int(diff // 3600)}h ago"
+    days = int(diff // 86400)
+    return "yesterday" if days == 1 else f"{days} days ago"
+
+
+def load_recent_statuses():
+    try:
+        with open(RECENT_STATUSES_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def record_recent_status(text, emoji, icon, expiry_config):
+    recent = load_recent_statuses()
+    recent = [r for r in recent if not (r["text"] == text and r["emoji"] == emoji)]
+    entry  = {"text": text, "emoji": emoji, "icon": icon,
+              "expiry_config": expiry_config, "set_at": time.time()}
+    recent = [entry] + recent[:_RECENT_STATUSES_MAX - 1]
+    try:
+        os.makedirs(os.path.dirname(RECENT_STATUSES_FILE), exist_ok=True)
+        with open(RECENT_STATUSES_FILE, "w") as f:
+            json.dump(recent, f)
+    except Exception:
+        pass
+
+
+def build_recent_status_items(statuses):
+    recent = load_recent_statuses()
+    preset_keys = {(s["text"], s["emoji"]) for s in statuses}
+    recent = [r for r in recent if (r["text"], r["emoji"]) not in preset_keys]
+    if not recent:
+        return []
+
+    separator = {"title": "── Recent statuses ──", "valid": False, "subtitle": ""}
+    items = [separator]
+    for r in recent:
+        text         = r["text"]
+        emoji        = r["emoji"]
+        icon         = r.get("icon", "")
+        expiry_cfg   = r.get("expiry_config", "")
+        expiry_ts, _ = compute_expiry_from_config(expiry_cfg)
+        rel_time     = format_relative_time(r["set_at"])
+        subtitle     = f"{emoji}  {rel_time}" if emoji else rel_time
+
+        set_arg  = json.dumps({"text": text, "emoji": emoji, "icon": icon,
+                               "expiry": expiry_ts, "expiry_config": expiry_cfg})
+        save_arg = json.dumps({"text": text, "emoji": emoji, "icon": icon,
+                               "expiry": expiry_ts, "expiry_config": expiry_cfg,
+                               "action": "save_preset"})
+        items.append(with_icon({
+            "title":    text,
+            "subtitle": subtitle,
+            "arg":      set_arg,
+            "valid":    True,
+            "mods": {"cmd": {
+                "subtitle": "Save as preset",
+                "arg":      save_arg,
+                "valid":    True,
+            }},
+        }, icon or emoji))
+    return items
 
 
 # ── Current status cache ──────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ from common import (
     build_remove_confirm_submenu, build_token_submenu, build_setup_item,
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
     build_current_status_item, _current_status_needs_rerun,
+    build_recent_status_items,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -175,6 +176,9 @@ def main():
                 }
             },
         }, icon_char))
+
+    if not query:
+        items.extend(build_recent_status_items(statuses))
 
     if not items:
         items.append({

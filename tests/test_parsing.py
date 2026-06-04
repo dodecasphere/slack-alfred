@@ -498,6 +498,161 @@ class TestSearchEmoji(unittest.TestCase):
         self.assertIsNone(results[0][1])
 
 
+# ── format_relative_time ──────────────────────────────────────────────────────
+
+class TestFormatRelativeTime(unittest.TestCase):
+
+    def _fmt(self, seconds_ago):
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = FIXED_TIME
+            return wf.format_relative_time(FIXED_TIME - seconds_ago)
+
+    def test_just_now(self):
+        self.assertEqual(self._fmt(30), "just now")
+
+    def test_exactly_59_seconds(self):
+        self.assertEqual(self._fmt(59), "just now")
+
+    def test_minutes(self):
+        self.assertEqual(self._fmt(60),      "1m ago")
+        self.assertEqual(self._fmt(47 * 60), "47m ago")
+
+    def test_hours(self):
+        self.assertEqual(self._fmt(3600),     "1h ago")
+        self.assertEqual(self._fmt(5 * 3600), "5h ago")
+
+    def test_yesterday(self):
+        self.assertEqual(self._fmt(86400), "yesterday")
+
+    def test_days(self):
+        self.assertEqual(self._fmt(2 * 86400), "2 days ago")
+        self.assertEqual(self._fmt(5 * 86400), "5 days ago")
+
+
+# ── recent statuses ───────────────────────────────────────────────────────────
+
+class TestRecentStatuses(unittest.TestCase):
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        self._tmp.close()
+        self._orig = wf.RECENT_STATUSES_FILE
+        wf.RECENT_STATUSES_FILE = self._tmp.name
+
+    def tearDown(self):
+        wf.RECENT_STATUSES_FILE = self._orig
+        os.unlink(self._tmp.name)
+
+    def _record(self, text, emoji="🎧", icon="🎧", expiry_config="", now=FIXED_TIME):
+        with mock.patch("common.time") as mt:
+            mt.time.return_value = now
+            wf.record_recent_status(text, emoji, icon, expiry_config)
+
+    def test_missing_file_returns_empty(self):
+        wf.RECENT_STATUSES_FILE = self._tmp.name + ".gone"
+        self.assertEqual(wf.load_recent_statuses(), [])
+        wf.RECENT_STATUSES_FILE = self._tmp.name
+
+    def test_record_then_load(self):
+        self._record("Deep work", ":brain:", ":brain:", "2h")
+        recent = wf.load_recent_statuses()
+        self.assertEqual(len(recent), 1)
+        self.assertEqual(recent[0]["text"],          "Deep work")
+        self.assertEqual(recent[0]["emoji"],         ":brain:")
+        self.assertEqual(recent[0]["expiry_config"], "2h")
+
+    def test_newest_first(self):
+        self._record("First",  now=FIXED_TIME)
+        self._record("Second", now=FIXED_TIME + 1)
+        recent = wf.load_recent_statuses()
+        self.assertEqual(recent[0]["text"], "Second")
+        self.assertEqual(recent[1]["text"], "First")
+
+    def test_deduplication_moves_to_top(self):
+        self._record("Deep work", now=FIXED_TIME)
+        self._record("Lunch",     now=FIXED_TIME + 1)
+        self._record("Deep work", now=FIXED_TIME + 2)
+        recent = wf.load_recent_statuses()
+        self.assertEqual(recent[0]["text"], "Deep work")
+        self.assertEqual(len(recent), 2)
+
+    def test_max_entries_respected(self):
+        for i in range(wf._RECENT_STATUSES_MAX + 3):
+            self._record(f"Status {i}", now=FIXED_TIME + i)
+        self.assertEqual(len(wf.load_recent_statuses()), wf._RECENT_STATUSES_MAX)
+
+    def test_most_recent_kept_when_trimmed(self):
+        for i in range(wf._RECENT_STATUSES_MAX + 2):
+            self._record(f"Status {i}", now=FIXED_TIME + i)
+        self.assertEqual(wf.load_recent_statuses()[0]["text"],
+                         f"Status {wf._RECENT_STATUSES_MAX + 1}")
+
+
+# ── build_recent_status_items ─────────────────────────────────────────────────
+
+class TestBuildRecentStatusItems(unittest.TestCase):
+
+    PRESETS = [
+        {"title": "Focusing", "emoji": ":headphones:", "text": "Focusing", "icon": "🎧"},
+    ]
+
+    RECENTS = [
+        {"text": "At the gym", "emoji": "🏋️",          "icon": "🏋️",      "expiry_config": "",   "set_at": FIXED_TIME - 3600},
+        {"text": "Deep work",  "emoji": ":brain:",      "icon": ":brain:",  "expiry_config": "2h", "set_at": FIXED_TIME - 60},
+        {"text": "Focusing",   "emoji": ":headphones:", "icon": "🎧",       "expiry_config": "",   "set_at": FIXED_TIME - 10},
+    ]
+
+    def _build(self, recents=None, presets=None, now=FIXED_TIME):
+        r = self.RECENTS if recents is None else recents
+        p = self.PRESETS if presets is None else presets
+        with mock.patch("common.load_recent_statuses", return_value=r), \
+             mock.patch("common.time") as mt:
+            mt.time.return_value = now
+            return wf.build_recent_status_items(p)
+
+    def test_empty_recents_returns_empty(self):
+        self.assertEqual(self._build(recents=[]), [])
+
+    def test_all_match_presets_returns_empty(self):
+        recents = [{"text": "Focusing", "emoji": ":headphones:", "icon": "🎧",
+                    "expiry_config": "", "set_at": FIXED_TIME - 10}]
+        self.assertEqual(self._build(recents=recents), [])
+
+    def test_first_item_is_separator(self):
+        items = self._build()
+        self.assertFalse(items[0].get("valid", True))
+        self.assertIn("Recent", items[0]["title"])
+
+    def test_preset_duplicates_excluded(self):
+        items = self._build()
+        self.assertNotIn("Focusing", [i["title"] for i in items])
+
+    def test_recent_items_are_valid(self):
+        items = self._build()
+        self.assertTrue(any(i.get("valid", False) for i in items))
+
+    def test_subtitle_contains_relative_time(self):
+        items = self._build()
+        valid_items = [i for i in items if i.get("valid", False)]
+        self.assertTrue(any("ago" in i.get("subtitle", "") or
+                            "just now" in i.get("subtitle", "") for i in valid_items))
+
+    def test_item_arg_has_text_and_emoji(self):
+        items = self._build()
+        for item in [i for i in items if i.get("valid", False)]:
+            arg = json.loads(item["arg"])
+            self.assertIn("text",  arg)
+            self.assertIn("emoji", arg)
+
+    def test_cmd_mod_saves_as_preset(self):
+        items = self._build()
+        for item in [i for i in items if i.get("valid", False)]:
+            cmd = item.get("mods", {}).get("cmd", {})
+            self.assertTrue(cmd.get("valid", False))
+            self.assertEqual(json.loads(cmd["arg"])["action"], "save_preset")
+
+
 # ── build_edit_submenu ────────────────────────────────────────────────────────
 
 class TestBuildEditSubmenu(unittest.TestCase):
