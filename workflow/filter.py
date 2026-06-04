@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import json
 import os
+import subprocess
 import sys
 
 CONFIG_FILE = os.path.expanduser("~/.config/slack-alfred/config.json")
+ICON_CACHE  = os.path.expanduser("~/.config/slack-alfred/icons")
 
 DEFAULT_STATUSES = [
     {"title": "Clear status",        "emoji": "",                        "text": "",                    "icon": "🧹"},
@@ -20,6 +22,34 @@ DEFAULT_STATUSES = [
     {"title": "Be right back",       "emoji": ":brb:",                   "text": "Be right back",       "icon": "🔙"},
 ]
 
+# Render an emoji to a 160×160 PNG using macOS JXA + NSBitmapImageRep (headless-safe).
+_JXA = """\
+ObjC.import('AppKit');
+var emoji=EMOJI, size=160, out=OUTPATH;
+var rep=$.NSBitmapImageRep.alloc\
+.initWithBitmapDataPlanesPixelsWidePixelsHighBitsPerSampleSamplesPerPixelHasAlphaIsPlanarColorSpaceNameBitmapFormatBytesPerRowBitsPerPixel(
+    null,size,size,8,4,true,false,"NSCalibratedRGBColorSpace",0,0,0);
+$.NSGraphicsContext.setCurrentContext($.NSGraphicsContext.graphicsContextWithBitmapImageRep(rep));
+var font=$.NSFont.systemFontOfSize(size*0.80),attrs=ObjC.wrap({"NSFont":font});
+var str=$.NSString.stringWithString(emoji),sz=str.sizeWithAttributes(attrs);
+str.drawAtPointWithAttributes($.NSMakePoint((size-sz.width)/2,(size-sz.height)/2),attrs);
+rep.representationUsingTypeProperties(4,ObjC.wrap({})).writeToFileAtomically(out,true);
+"""
+
+
+def icon_path(emoji_char):
+    """Return path to a cached PNG for emoji_char, generating it on first use."""
+    if not emoji_char:
+        return None
+    # Filename from codepoints avoids Unicode filesystem issues
+    name = "_".join(f"{ord(c):04X}" for c in emoji_char if ord(c) > 31)
+    path = os.path.join(ICON_CACHE, f"{name}.png")
+    if not os.path.exists(path):
+        os.makedirs(ICON_CACHE, exist_ok=True)
+        jxa = _JXA.replace("EMOJI", json.dumps(emoji_char)).replace("OUTPATH", json.dumps(path))
+        subprocess.run(["osascript", "-l", "JavaScript", "-e", jxa], capture_output=True)
+    return path if os.path.exists(path) else None
+
 
 def load_config():
     try:
@@ -29,8 +59,11 @@ def load_config():
         return None
 
 
-def emoji_icon(char):
-    return {"type": "text", "text": char}
+def with_icon(item, emoji_char):
+    p = icon_path(emoji_char)
+    if p:
+        item["icon"] = {"path": p}
+    return item
 
 
 def main():
@@ -39,15 +72,12 @@ def main():
     config = load_config()
 
     if not config or not config.get("token"):
-        print(json.dumps({
-            "items": [{
-                "title": "Setup Required — Press Enter",
-                "subtitle": "Opens Slack API page to generate your token",
-                "arg": "setup",
-                "valid": True,
-                "icon": emoji_icon("⚙️"),
-            }]
-        }))
+        print(json.dumps({"items": [with_icon({
+            "title": "Setup Required — Press Enter",
+            "subtitle": "Opens Slack API page to generate your token",
+            "arg": "setup",
+            "valid": True,
+        }, "⚙️")]}))
         return
 
     statuses = config.get("statuses", DEFAULT_STATUSES)
@@ -60,24 +90,20 @@ def main():
             continue
 
         subtitle = f"{s['emoji']}  {s['text']}" if s["emoji"] else "Clear your current status"
-        item = {
+        items.append(with_icon({
             "title": s["title"],
             "subtitle": subtitle,
             "arg": json.dumps({"text": s["text"], "emoji": s["emoji"]}),
             "valid": True,
-        }
-        if s.get("icon"):
-            item["icon"] = emoji_icon(s["icon"])
-        items.append(item)
+        }, s.get("icon", "")))
 
     if query and not any(query == s["title"].lower() for s in statuses):
-        items.append({
+        items.append(with_icon({
             "title": f'Custom: "{raw}"',
             "subtitle": ":speech_balloon:  Set as custom status",
             "arg": json.dumps({"text": raw, "emoji": ":speech_balloon:"}),
             "valid": True,
-            "icon": emoji_icon("💬"),
-        })
+        }, "💬"))
 
     if not items:
         items.append({
