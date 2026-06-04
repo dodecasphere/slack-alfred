@@ -824,10 +824,10 @@ def write_current_status_cache(text, emoji, expiration):
 
 
 def _current_status_needs_rerun():
-    """True only when rerun is needed: loading state or sub-60s expiry countdown."""
+    """True only for sub-60s expiry countdown. Loading state is static to avoid refocus."""
     cache = load_current_status_cache()
     if cache is None:
-        return True
+        return False
     expiration = cache.get("status_expiration", 0)
     if expiration:
         remaining = expiration - time.time()

@@ -844,8 +844,9 @@ class TestCurrentStatusNeedsRerun(unittest.TestCase):
             mt.time.return_value = now
             return wf._current_status_needs_rerun()
 
-    def test_cache_miss_needs_rerun(self):
-        self.assertTrue(self._needs(None))
+    def test_cache_miss_does_not_need_rerun(self):
+        # Loading state stays static — rerunning while fetching causes refocus on every second.
+        self.assertFalse(self._needs(None))
 
     def test_no_expiry_does_not_need_rerun(self):
         self.assertFalse(self._needs({"status_text": "Focusing", "status_expiration": 0}))
