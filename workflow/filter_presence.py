@@ -12,18 +12,20 @@ from common import (load_config, with_icon, TOKEN_ERROR_FLAG,
 def main():
     raw   = sys.stdin.read().strip()
     query = raw.lower()
-    config = load_config()
 
-    if not config or not config.get("token"):
-        print(json.dumps({"items": [build_setup_item()]}))
-        return
-
+    # Token submenu must be reachable regardless of config state (used during initial setup too)
     if raw.startswith(_SUBMENU_PREFIX):
         inner = raw[len(_SUBMENU_PREFIX):]
         if inner == _TOKEN_SUBMENU or inner.startswith(_TOKEN_SUBMENU + " "):
             token_input = inner[len(_TOKEN_SUBMENU):].strip()
             print(json.dumps({"items": build_token_submenu(token_input)}))
             return
+
+    config = load_config()
+
+    if not config or not config.get("token"):
+        print(json.dumps({"items": [build_setup_item()]}))
+        return
 
     if os.path.exists(TOKEN_ERROR_FLAG):
         print(json.dumps({"items": [build_token_error_item()]}))

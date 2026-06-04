@@ -16,6 +16,15 @@ from common import (
 def main():
     raw   = sys.stdin.read().strip()
     query = raw.lower()
+
+    # Token submenu must be reachable regardless of config state (used during initial setup too)
+    if raw.startswith(_SUBMENU_PREFIX):
+        inner = raw[len(_SUBMENU_PREFIX):]
+        if inner == _TOKEN_SUBMENU or inner.startswith(_TOKEN_SUBMENU + " "):
+            token_input = inner[len(_TOKEN_SUBMENU):].strip()
+            print(json.dumps({"items": build_token_submenu(token_input)}))
+            return
+
     config = load_config()
 
     if not config or not config.get("token"):
@@ -30,15 +39,12 @@ def main():
                       key=lambda s: (-_usage_score(usage.get(s["title"], {})),
                                      s["title"].lower()))
 
-    # Submenu routing — triggered when right-arrow is pressed on a preset item
+    # Remaining submenu routing — preset expiry and remove confirm
     if raw.startswith(_SUBMENU_PREFIX):
         inner = raw[len(_SUBMENU_PREFIX):]
         if inner.endswith(_REMOVE_SUFFIX):
             preset_title = inner[:-len(_REMOVE_SUFFIX)]
             items = build_remove_confirm_submenu(preset_title, statuses)
-        elif inner == _TOKEN_SUBMENU or inner.startswith(_TOKEN_SUBMENU + " "):
-            token_input = inner[len(_TOKEN_SUBMENU):].strip()
-            items = build_token_submenu(token_input)
         else:
             title, custom = split_submenu_query(inner, statuses)
             items = build_expiry_submenu(title, custom, statuses)

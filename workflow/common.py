@@ -501,7 +501,7 @@ def do_setup():
         "2. From scratch → name it, pick your workspace\\n"
         "3. OAuth & Permissions → User Token Scopes → add: users.profile:write  users:write\\n"
         "4. Install to Workspace → copy the xoxp- token\\n"
-        "5. Run ./setup.sh in the repo folder"
+        "5. Return to Alfred → Tab this item → paste your token"
     )
     script = (
         f'display dialog "Slack Status Setter — Setup\\n\\n{steps}" '
@@ -513,10 +513,11 @@ def do_setup():
 
 def build_setup_item():
     return with_icon({
-        "title":    "Setup Required — Press Enter",
-        "subtitle": "Opens Slack API page to generate your token",
-        "arg":      "setup",
-        "valid":    True,
+        "title":        "Setup Required — Press Enter",
+        "subtitle":     "Opens Slack API page to generate your token · Tab to enter it",
+        "arg":          "setup",
+        "autocomplete": f"{_SUBMENU_PREFIX}{_TOKEN_SUBMENU} ",
+        "valid":        True,
     }, "⚙️")
 
 
