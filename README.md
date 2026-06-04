@@ -8,7 +8,7 @@ Set your Slack status from Alfred. Requires Alfred with a Powerpack license.
 curl -fsSL https://raw.githubusercontent.com/dodecasphere/slack-alfred/main/install.sh | bash
 ```
 
-This downloads the workflow, walks you through creating a Slack app and getting a token, then installs everything in Alfred automatically. You only need one Slack permission scope: `users.profile:write`.
+This downloads the workflow, walks you through creating a Slack app and getting a token, then installs everything in Alfred automatically. You only need two Slack permission scopes: `users.profile:write` for setting status, and `users:write` for setting presence.
 
 ### Manual installation
 
@@ -31,20 +31,16 @@ To rebuild after changes:
 | `slacks` | Set your Slack status |
 | `slackp` | Set your Slack presence (Active / Away) |
 
-### Status (`slacks`)
+## Status (`slacks`)
 
 - **Enter** — set the selected status
 - **⌘Enter** on a custom status — save it as a preset
 - **Tab** on any preset — open expiry options or remove it
 - **⌘Enter** on an expiry option — update the preset's stored expiry
 
-### Presence (`slackp`)
-
-- **Enter** on Active or Away — set immediately
-
 ### Custom status syntax
 
-Type anything after `slack` to set a one-off status:
+Type anything after `slacks` to set a one-off status:
 
 | Input | Icon | Slack emoji | Text |
 |-------|------|-------------|------|
@@ -57,13 +53,17 @@ Type anything after `slack` to set a one-off status:
 Append `for <duration>` or `until <time>` to any custom status:
 
 ```
-slack 🎧 focusing for 2h
-slack lunch for 45m
-slack 🧠 :brain: deep work until 5pm
+slacks 🎧 focusing for 2h
+slacks lunch for 45m
+slacks 🧠 :brain: deep work until 5pm
 ```
 
 **Duration formats:** `2m` `2min` `2mins` `2minutes` `2h` `2hr` `2hours` `1h30m` `1.5h`
 **Time formats:** `2pm` `2p` `2:30pm` `14:00` `noon` `midnight` `2 o'clock`
+
+## Presence (`slackp`)
+
+- **Enter** on Active or Away — set immediately
 
 ## Config
 

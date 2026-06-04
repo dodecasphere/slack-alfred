@@ -51,7 +51,7 @@ def main():
         return
 
     if result.get("ok"):
-        print("🟢  Active" if presence == "auto" else "⏸️  Away")
+        print("🧑‍💻  Active" if presence == "auto" else "🏃  Away")
     else:
         error = result.get("error", "unknown")
         if error == "missing_scope":

@@ -25,13 +25,13 @@ def main():
             "subtitle": "Set your Slack presence to active",
             "arg":      "auto",
             "valid":    True,
-        }, "🟢"),
+        }, "🧑‍💻"),
         with_icon({
             "title":    "Away",
             "subtitle": "Set your Slack presence to away",
             "arg":      "away",
             "valid":    True,
-        }, "⏸️"),
+        }, "🏃"),
     ]
 
     if query:
