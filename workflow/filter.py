@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -60,6 +61,9 @@ def with_icon(item, emoji_char):
     return item
 
 
+_SLACK_CODE = re.compile(r'(:[a-z0-9_+\-]+:)', re.IGNORECASE)
+
+
 def split_emoji_prefix(text):
     """
     '🏋️ at the gym' → ('🏋️', 'at the gym')
@@ -71,6 +75,29 @@ def split_emoji_prefix(text):
     if len(parts) == 2 and parts[1] and ord(parts[0][0]) > 0x00FF:
         return parts[0], parts[1].strip()
     return None, text
+
+
+def parse_custom_status(raw):
+    """
+    Return (menu_icon, slack_emoji, status_text) for a free-form query.
+
+    '🧠 :brain: deep focus' → ('🧠', ':brain:',  'deep focus')
+    '🏋️ at the gym'        → ('🏋️', '🏋️',      'at the gym')
+    'be right back'         → ('💬', ':speech_balloon:', 'be right back')
+    """
+    icon_char, rest = split_emoji_prefix(raw)
+
+    if not icon_char:
+        return "💬", ":speech_balloon:", raw.strip()
+
+    m = _SLACK_CODE.search(rest)
+    if m:
+        slack_emoji  = m.group(1)
+        status_text  = (rest[:m.start()] + rest[m.end():]).strip()
+        return icon_char, slack_emoji, status_text
+
+    # No :code: — use the Unicode emoji as the Slack emoji too
+    return icon_char, icon_char, rest.strip()
 
 
 def load_config():
@@ -112,18 +139,19 @@ def main():
             "valid": True,
         }, s.get("icon", "")))
 
-    # Custom status: parse a leading emoji if present, hint if not
+    # Custom status: parse emoji prefix and optional :slack_code:
     if query and not any(query == s["title"].lower() for s in statuses):
-        icon_char, status_text = split_emoji_prefix(raw)
-        if icon_char:
-            subtitle = f"{icon_char}  Set · ⌘↩ to save as preset"
-        else:
-            icon_char = "💬"
-            status_text = raw
-            subtitle = "💬  Set · ⌘↩ to save as preset · start with an emoji for a custom icon"
+        icon_char, slack_emoji, status_text = parse_custom_status(raw)
 
-        set_arg   = json.dumps({"text": status_text, "emoji": ":speech_balloon:", "icon": icon_char})
-        save_arg  = json.dumps({"text": status_text, "emoji": ":speech_balloon:", "icon": icon_char, "action": "save_preset"})
+        if icon_char == "💬":
+            subtitle = "💬  Set · ⌘↩ save as preset · lead with emoji for a custom icon"
+        elif slack_emoji == icon_char:
+            subtitle = f"{icon_char}  Icon & Slack emoji · ⌘↩ save as preset"
+        else:
+            subtitle = f"{icon_char}  Icon · {slack_emoji} Slack emoji · ⌘↩ save as preset"
+
+        set_arg  = json.dumps({"text": status_text, "emoji": slack_emoji, "icon": icon_char})
+        save_arg = json.dumps({"text": status_text, "emoji": slack_emoji, "icon": icon_char, "action": "save_preset"})
         items.append(with_icon({
             "title": f'Custom: "{status_text}"',
             "subtitle": subtitle,
