@@ -632,11 +632,15 @@ class TestBuildRecentStatusItems(unittest.TestCase):
         items = self._build()
         self.assertTrue(any(i.get("valid", False) for i in items))
 
-    def test_subtitle_contains_relative_time(self):
+    def test_subtitle_matches_preset_layout(self):
+        # subtitle = "emoji  text · rel_time · ⌘↩ to save as preset"
         items = self._build()
         valid_items = [i for i in items if i.get("valid", False)]
-        self.assertTrue(any("ago" in i.get("subtitle", "") or
-                            "just now" in i.get("subtitle", "") for i in valid_items))
+        for item in valid_items:
+            sub = item.get("subtitle", "")
+            self.assertTrue("ago" in sub or "just now" in sub, f"no rel time in {sub!r}")
+            self.assertIn("⌘↩", sub)
+            self.assertIn(item["title"], sub)  # text appears in subtitle too
 
     def test_item_arg_has_text_and_emoji(self):
         items = self._build()

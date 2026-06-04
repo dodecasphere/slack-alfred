@@ -750,7 +750,12 @@ def build_recent_status_items(statuses):
     if not recent:
         return []
 
-    separator = {"title": "── Recent statuses ──", "valid": False, "subtitle": ""}
+    separator = {
+        "title":    "Recent statuses *************************",
+        "valid":    False,
+        "subtitle": "",
+        "icon":     {"path": ""},
+    }
     items = [separator]
     for r in recent:
         text         = r["text"]
@@ -759,7 +764,7 @@ def build_recent_status_items(statuses):
         expiry_cfg   = r.get("expiry_config", "")
         expiry_ts, _ = compute_expiry_from_config(expiry_cfg)
         rel_time     = format_relative_time(r["set_at"])
-        subtitle     = f"{emoji}  {rel_time}" if emoji else rel_time
+        subtitle     = f"{emoji}  {text} · {rel_time} · ⌘↩ to save as preset"
 
         set_arg  = json.dumps({"text": text, "emoji": emoji, "icon": icon,
                                "expiry": expiry_ts, "expiry_config": expiry_cfg})
