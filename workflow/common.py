@@ -17,7 +17,7 @@ CURRENT_STATUS_CACHE      = os.path.expanduser("~/.config/slack-alfred/current_s
 RECENT_STATUSES_FILE      = os.path.expanduser("~/.config/slack-alfred/recent_statuses.json")
 
 _CURRENT_STATUS_TTL  = 60   # seconds
-_RECENT_STATUSES_MAX = 10
+_RECENT_STATUSES_DAYS = 10
 
 _EMOJI_LIST_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "emoji.json")
 _CUSTOM_EMOJI_TTL = 86400  # 24 hours
@@ -730,11 +730,14 @@ def load_recent_statuses():
 
 
 def record_recent_status(text, emoji, icon, expiry_config):
+    cutoff = time.time() - _RECENT_STATUSES_DAYS * 86400
     recent = load_recent_statuses()
-    recent = [r for r in recent if not (r["text"] == text and r["emoji"] == emoji)]
+    recent = [r for r in recent
+              if not (r["text"] == text and r["emoji"] == emoji)
+              and r.get("set_at", 0) > cutoff]
     entry  = {"text": text, "emoji": emoji, "icon": icon,
               "expiry_config": expiry_config, "set_at": time.time()}
-    recent = [entry] + recent[:_RECENT_STATUSES_MAX - 1]
+    recent = [entry] + recent
     try:
         os.makedirs(os.path.dirname(RECENT_STATUSES_FILE), exist_ok=True)
         with open(RECENT_STATUSES_FILE, "w") as f:
@@ -744,19 +747,16 @@ def record_recent_status(text, emoji, icon, expiry_config):
 
 
 def build_recent_status_items(statuses):
+    cutoff = time.time() - _RECENT_STATUSES_DAYS * 86400
     recent = load_recent_statuses()
     preset_keys = {(s["text"], s["emoji"]) for s in statuses}
-    recent = [r for r in recent if (r["text"], r["emoji"]) not in preset_keys]
+    recent = [r for r in recent
+              if (r["text"], r["emoji"]) not in preset_keys
+              and r.get("set_at", 0) > cutoff]
     if not recent:
         return []
 
-    separator = {
-        "title":    "Recent statuses *************************",
-        "valid":    False,
-        "subtitle": "",
-        "icon":     {"path": ""},
-    }
-    items = [separator]
+    items = []
     for r in recent:
         text         = r["text"]
         emoji        = r["emoji"]
@@ -764,7 +764,7 @@ def build_recent_status_items(statuses):
         expiry_cfg   = r.get("expiry_config", "")
         expiry_ts, _ = compute_expiry_from_config(expiry_cfg)
         rel_time     = format_relative_time(r["set_at"])
-        subtitle     = f"{emoji}  {text} · {rel_time} · ⌘↩ to save as preset"
+        subtitle     = f"{emoji}  {text} · Set {rel_time} · ⌘↩ to save as preset"
 
         set_arg  = json.dumps({"text": text, "emoji": emoji, "icon": icon,
                                "expiry": expiry_ts, "expiry_config": expiry_cfg})

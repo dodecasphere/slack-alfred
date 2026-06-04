@@ -577,16 +577,21 @@ class TestRecentStatuses(unittest.TestCase):
         self.assertEqual(recent[0]["text"], "Deep work")
         self.assertEqual(len(recent), 2)
 
-    def test_max_entries_respected(self):
-        for i in range(wf._RECENT_STATUSES_MAX + 3):
-            self._record(f"Status {i}", now=FIXED_TIME + i)
-        self.assertEqual(len(wf.load_recent_statuses()), wf._RECENT_STATUSES_MAX)
+    def test_old_entries_pruned_on_record(self):
+        old_ts = FIXED_TIME - (wf._RECENT_STATUSES_DAYS + 1) * 86400
+        with open(wf.RECENT_STATUSES_FILE, "w") as f:
+            import json as _json
+            _json.dump([{"text": "Old status", "emoji": ":wave:", "icon": "",
+                         "expiry_config": "", "set_at": old_ts}], f)
+        self._record("New status", now=FIXED_TIME)
+        texts = [r["text"] for r in wf.load_recent_statuses()]
+        self.assertNotIn("Old status", texts)
+        self.assertIn("New status", texts)
 
-    def test_most_recent_kept_when_trimmed(self):
-        for i in range(wf._RECENT_STATUSES_MAX + 2):
-            self._record(f"Status {i}", now=FIXED_TIME + i)
-        self.assertEqual(wf.load_recent_statuses()[0]["text"],
-                         f"Status {wf._RECENT_STATUSES_MAX + 1}")
+    def test_no_max_within_window(self):
+        for i in range(15):
+            self._record(f"Status {i}", now=FIXED_TIME - i * 3600)
+        self.assertEqual(len(wf.load_recent_statuses()), 15)
 
 
 # ── build_recent_status_items ─────────────────────────────────────────────────
@@ -619,10 +624,9 @@ class TestBuildRecentStatusItems(unittest.TestCase):
                     "expiry_config": "", "set_at": FIXED_TIME - 10}]
         self.assertEqual(self._build(recents=recents), [])
 
-    def test_first_item_is_separator(self):
+    def test_no_separator(self):
         items = self._build()
-        self.assertFalse(items[0].get("valid", True))
-        self.assertIn("Recent", items[0]["title"])
+        self.assertTrue(all(i.get("valid", False) for i in items))
 
     def test_preset_duplicates_excluded(self):
         items = self._build()
@@ -630,17 +634,17 @@ class TestBuildRecentStatusItems(unittest.TestCase):
 
     def test_recent_items_are_valid(self):
         items = self._build()
-        self.assertTrue(any(i.get("valid", False) for i in items))
+        self.assertTrue(len(items) > 0)
 
     def test_subtitle_matches_preset_layout(self):
-        # subtitle = "emoji  text · rel_time · ⌘↩ to save as preset"
+        # subtitle = "emoji  text · Set rel_time · ⌘↩ to save as preset"
         items = self._build()
-        valid_items = [i for i in items if i.get("valid", False)]
-        for item in valid_items:
+        for item in [i for i in items if i.get("valid", False)]:
             sub = item.get("subtitle", "")
+            self.assertIn("Set ", sub)
             self.assertTrue("ago" in sub or "just now" in sub, f"no rel time in {sub!r}")
             self.assertIn("⌘↩", sub)
-            self.assertIn(item["title"], sub)  # text appears in subtitle too
+            self.assertIn(item["title"], sub)
 
     def test_item_arg_has_text_and_emoji(self):
         items = self._build()
