@@ -73,6 +73,47 @@ zip -r "$OUTPUT" . -x "*.DS_Store" > /dev/null
 echo -e "  ${GREEN}✓${RESET}  slack-status.alfredworkflow"
 echo ""
 
+# ── Scheduler (launchd) ─────────────────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}Scheduler${RESET}"
+LABEL="com.michaeldulle.slack-alfred.scheduler"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_NUM="$(id -u)"
+mkdir -p "$HOME/Library/LaunchAgents"
+cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>$LABEL</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>$SCRIPT_DIR/workflow/scheduler.py</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>60</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>$CONFIG_DIR/scheduler.log</string>
+    <key>StandardErrorPath</key>
+    <string>$CONFIG_DIR/scheduler.log</string>
+</dict>
+</plist>
+EOF
+# Reload (bootout the old one first; fall back to legacy load on older macOS).
+launchctl bootout "gui/$UID_NUM/$LABEL" 2>/dev/null || true
+if launchctl bootstrap "gui/$UID_NUM" "$PLIST" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${RESET}  Loaded $LABEL (checks every 60s)"
+elif launchctl load -w "$PLIST" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${RESET}  Loaded $LABEL (checks every 60s)"
+else
+    echo -e "  Could not auto-load the scheduler — load it manually:"
+    echo -e "  ${DIM}launchctl bootstrap gui/$UID_NUM \"$PLIST\"${RESET}"
+fi
+echo ""
+
 # ── Install ───────────────────────────────────────────────────────────────────
 echo -e "${CYAN}${BOLD}Install${RESET}"
 open "$OUTPUT"

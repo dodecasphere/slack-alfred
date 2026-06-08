@@ -82,6 +82,26 @@ slacks 🧠 :brain: deep work until 5pm
 
 A bare number ≤ 23 is treated as a clock hour (`5` → 5:00); a bare number > 23 is treated as hours (`24` → 24h).
 
+### Schedule a status
+
+Add `@` and a time to any status to schedule it instead of setting it now — recurring or one-off:
+
+```
+slacks 🎧 Focusing for 2h @ weekdays 9am
+slacks ⛔ DND @ tomorrow 3pm
+slacks 🏠 Done for the day @ mon,wed,fri 5pm
+slacks 🍔 Lunch @ daily 12:30pm
+slacks 🧠 deep work @ in 2h
+```
+
+Everything before `@` is the status (same syntax as above, including `for 2h` auto-expiry); everything after is when it fires.
+
+**When formats:** `weekdays` · `weekends` · `daily` · day lists (`mon,wed,fri` or `tue thu`) followed by a time · `today 5pm` · `tomorrow 3pm` · `2026-12-25 9am` · `in 2h` · a bare time (`5pm`) for the next occurrence.
+
+Type just `slacks @` to **manage schedules**: **Enter** pauses/resumes, **⌘Enter** deletes, **⌥Enter** sets it now.
+
+Scheduling runs via a `launchd` agent that checks every minute (installed by `build.sh`/`setup.sh`). It only fires while you're logged in, and skips a recurring time you slept through rather than setting it late.
+
 ## Presence (`slackp`)
 
 - **Enter** on Active or Away — set immediately

@@ -16,6 +16,7 @@ from common import (
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
     build_current_status_item, _current_status_needs_rerun,
     build_recent_status_items,
+    build_schedule_list_items, build_schedule_create_items,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -94,6 +95,19 @@ def main():
 
     if os.path.exists(TOKEN_ERROR_FLAG):
         print(json.dumps({"items": [build_token_error_item()]}))
+        return
+
+    # Schedule mode — any '@' in the query. Bare '@' lists/manages schedules;
+    # '<status> @ <when>' previews a new schedule.
+    if "@" in raw:
+        status_part, _, when_part = raw.partition("@")
+        status_part = status_part.strip()
+        when_part   = when_part.strip()
+        if not status_part:
+            items = build_schedule_list_items(config)
+        else:
+            items = build_schedule_create_items(status_part, when_part)
+        print(json.dumps({"items": items}))
         return
 
     # Emoji suggestion mode — trailing :fragment triggers inline emoji search

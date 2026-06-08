@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.request
 from datetime import datetime, timedelta
 
 CONFIG_FILE        = os.path.expanduser("~/.config/slack-alfred/config.json")
@@ -15,6 +16,7 @@ CUSTOM_EMOJI_CACHE        = os.path.expanduser("~/.config/slack-alfred/custom_em
 CUSTOM_EMOJI_IMAGES_DONE  = os.path.expanduser("~/.config/slack-alfred/custom_emoji_images.done")
 CURRENT_STATUS_CACHE      = os.path.expanduser("~/.config/slack-alfred/current_status.json")
 RECENT_STATUSES_FILE      = os.path.expanduser("~/.config/slack-alfred/recent_statuses.json")
+SCHEDULE_STATE_FILE       = os.path.expanduser("~/.config/slack-alfred/schedule_state.json")
 
 _CURRENT_STATUS_TTL  = 60   # seconds
 _RECENT_STATUSES_DAYS = 10
@@ -281,6 +283,211 @@ def compute_expiry_from_config(expiry_str):
     if ts:
         return ts, f"expires at {time_label}"
     return 0, ""
+
+
+# ── Schedule parsing ────────────────────────────────────────────────────────────
+
+_WEEKDAY_NAMES = {
+    "mon": 0, "monday": 0, "tue": 1, "tues": 1, "tuesday": 1,
+    "wed": 2, "weds": 2, "wednesday": 2, "thu": 3, "thur": 3, "thurs": 3,
+    "thursday": 3, "fri": 4, "friday": 4, "sat": 5, "saturday": 5,
+    "sun": 6, "sunday": 6,
+}
+_DAY_ABBR = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _fmt_clock(hour, minute):
+    ampm = "AM" if hour < 12 else "PM"
+    h12  = hour % 12 or 12
+    return f"{h12}:{minute:02d} {ampm}"
+
+
+def parse_time_of_day(text):
+    """
+    Parse a clock time into (hour, minute, '9:00 AM'). Returns None if
+    unrecognized. Strict: a bare integer with no am/pm and no colon is
+    ambiguous and rejected (use '9am' or '09:00').
+    """
+    t = text.strip().lower()
+    if t == "noon":
+        return 12, 0, "12:00 PM"
+    if t == "midnight":
+        return 0, 0, "12:00 AM"
+
+    m = re.fullmatch(r'(\d{1,2}):(\d{2})\s*(am?|pm?)?', t)
+    if m:
+        hour, minute, ampm = int(m.group(1)), int(m.group(2)), m.group(3)
+    else:
+        m = re.fullmatch(r'(\d{1,2})\s*(am|pm|a|p)', t)
+        if not m:
+            return None
+        hour, minute, ampm = int(m.group(1)), 0, m.group(2)
+
+    if ampm in ('pm', 'p') and hour != 12:
+        hour += 12
+    elif ampm in ('am', 'a') and hour == 12:
+        hour = 0
+
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return None
+    return hour, minute, _fmt_clock(hour, minute)
+
+
+def _parse_day_spec(text):
+    """
+    Split a leading recurring day spec from text.
+    Returns (sorted_weekday_ints, remainder) or (None, text) if no day spec.
+    """
+    t = text.strip()
+    low = t.lower()
+    for kw, days in (("everyday", range(7)), ("every day", range(7)),
+                     ("daily", range(7)),
+                     ("weekdays", range(5)), ("weekday", range(5)),
+                     ("weekends", [5, 6]), ("weekend", [5, 6])):
+        if low == kw or low.startswith(kw + " "):
+            return sorted(days), t[len(kw):].strip()
+
+    tokens   = low.split()
+    days     = []
+    consumed = 0
+    for tok in tokens:
+        parts = [p for p in tok.split(",") if p]
+        if parts and all(p in _WEEKDAY_NAMES for p in parts):
+            days.extend(_WEEKDAY_NAMES[p] for p in parts)
+            consumed += 1
+        else:
+            break
+    if days:
+        return sorted(set(days)), " ".join(t.split()[consumed:])
+    return None, text
+
+
+def _fmt_days(days):
+    s = sorted(set(days))
+    if s == list(range(7)):
+        return "every day"
+    if s == [0, 1, 2, 3, 4]:
+        return "weekdays"
+    if s == [5, 6]:
+        return "weekends"
+    return ", ".join(_DAY_ABBR[d] for d in s)
+
+
+def parse_schedule_when(text, now=None):
+    """
+    Parse a schedule trigger expression into a normalized spec dict, or None.
+
+    Recurring → {"kind":"recurring","days":[..],"hour","minute","desc"}
+    One-off   → {"kind":"one_off","timestamp":unix,"desc"}
+
+    Accepts recurring: 'weekdays 9am', 'daily 12:30pm', 'weekends 10am',
+    'mon,wed,fri 5pm', 'tue thu 9:00'.
+    Accepts one-off: 'in 2h', 'today 5pm', 'tomorrow 3pm', '2026-12-25 9am',
+    or a bare time ('5pm') meaning the next occurrence.
+    """
+    now = now or datetime.now()
+    t   = text.strip()
+    low = t.lower()
+    if not low:
+        return None
+
+    # one-off: in <duration>
+    m = re.match(r'in\s+(.+)$', low)
+    if m:
+        secs = parse_duration(m.group(1).strip())
+        if secs is None:
+            return None
+        dt = now + timedelta(seconds=secs)
+        return {"kind": "one_off", "timestamp": int(dt.timestamp()),
+                "desc": f"in {_fmt_duration(secs)}"}
+
+    # one-off: today/tomorrow <time>
+    m = re.match(r'(today|tomorrow)\s+(.+)$', low)
+    if m:
+        tod = parse_time_of_day(m.group(2).strip())
+        if not tod:
+            return None
+        hour, minute, label = tod
+        day = now.date() + (timedelta(days=1) if m.group(1) == "tomorrow"
+                            else timedelta())
+        dt  = datetime(day.year, day.month, day.day, hour, minute)
+        return {"kind": "one_off", "timestamp": int(dt.timestamp()),
+                "desc": f"{m.group(1)} at {label}"}
+
+    # one-off: YYYY-MM-DD [time]
+    m = re.match(r'(\d{4})-(\d{2})-(\d{2})(?:\s+(.+))?$', low)
+    if m:
+        if m.group(4):
+            tod = parse_time_of_day(m.group(4).strip())
+            if not tod:
+                return None
+            hour, minute, label = tod
+        else:
+            hour, minute, label = 9, 0, "9:00 AM"
+        try:
+            dt = datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                          hour, minute)
+        except ValueError:
+            return None
+        return {"kind": "one_off", "timestamp": int(dt.timestamp()),
+                "desc": f"{dt.strftime('%b %-d')} at {label}"}
+
+    # recurring: <day-spec> <time>
+    days, rest = _parse_day_spec(low)
+    if days is not None:
+        tod = parse_time_of_day(rest.strip())
+        if not tod:
+            return None
+        hour, minute, label = tod
+        return {"kind": "recurring", "days": days, "hour": hour,
+                "minute": minute, "desc": f"{_fmt_days(days)} at {label}"}
+
+    # one-off: bare time → next occurrence
+    ts, label = parse_until_time(low)
+    if ts:
+        return {"kind": "one_off", "timestamp": ts, "desc": f"at {label}"}
+
+    return None
+
+
+def evaluate_schedule(sched, now_dt, fired_keys, grace_seconds=300):
+    """
+    Decide what the dispatcher should do with one schedule at now_dt.
+
+    Returns (action, occurrence_key):
+      ("fire", key)  → set the status now and record key in fired state
+      ("expire", None) → a one-off whose time passed beyond grace; drop it
+      ("wait", None)   → not due, already fired, stale recurring, or disabled
+    """
+    if not sched.get("enabled", True):
+        return ("wait", None)
+
+    sid = sched.get("id", "")
+
+    if sched.get("kind") == "one_off":
+        ts    = sched.get("timestamp", 0)
+        delta = now_dt.timestamp() - ts
+        if delta < 0:
+            return ("wait", None)
+        if delta <= grace_seconds:
+            return ("fire", f"{sid}@{ts}")
+        return ("expire", None)
+
+    if sched.get("kind") == "recurring":
+        if now_dt.weekday() not in sched.get("days", []):
+            return ("wait", None)
+        key = f"{sid}@{now_dt.strftime('%Y-%m-%d')}"
+        if key in fired_keys:
+            return ("wait", None)
+        sched_dt = now_dt.replace(hour=sched.get("hour", 0),
+                                  minute=sched.get("minute", 0),
+                                  second=0, microsecond=0)
+        delta = now_dt.timestamp() - sched_dt.timestamp()
+        if 0 <= delta <= grace_seconds:
+            return ("fire", key)
+        return ("wait", None)
+
+    return ("wait", None)
 
 
 # ── Status parsing ────────────────────────────────────────────────────────────
@@ -893,3 +1100,134 @@ def load_config():
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+def save_config(config):
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+
+# ── Slack API ───────────────────────────────────────────────────────────────────
+
+def set_slack_status(token, text, emoji, expiry=0):
+    """POST users.profile.set. Returns the parsed JSON response."""
+    payload = json.dumps({
+        "profile": {
+            "status_text":       text,
+            "status_emoji":      emoji,
+            "status_expiration": expiry,
+        }
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://slack.com/api/users.profile.set",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type":  "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+# ── Schedules ────────────────────────────────────────────────────────────────────
+
+def load_schedule_state():
+    try:
+        with open(SCHEDULE_STATE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"fired": {}}
+
+
+def save_schedule_state(state):
+    try:
+        os.makedirs(os.path.dirname(SCHEDULE_STATE_FILE), exist_ok=True)
+        with open(SCHEDULE_STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
+
+
+def build_schedule_create_items(status_part, when_part):
+    """Live preview for 'slacks <status> @ <when>'. Returns Alfred items."""
+    icon_char, slack_emoji, text, _ts, _disp, expiry_cfg = parse_custom_status(status_part)
+
+    if not text:
+        return [{"title": "Type a status before @",
+                 "subtitle": "e.g. 🎧 Focusing @ weekdays 9am",
+                 "valid": False}]
+
+    spec = parse_schedule_when(when_part) if when_part else None
+    if not spec:
+        return [with_icon({
+            "title":    f'Schedule "{text}"',
+            "subtitle": "Type a time after @ — e.g. weekdays 9am, tomorrow 3pm, in 2h",
+            "valid":    False,
+        }, icon_char)]
+
+    subtitle = f"{slack_emoji}  {spec['desc']}"
+    if expiry_cfg:
+        _, exp_disp = compute_expiry_from_config(expiry_cfg)
+        if exp_disp:
+            subtitle += f" · clears {exp_disp.replace('expires ', '')}"
+
+    arg = json.dumps({
+        "action":        "save_schedule",
+        "when_raw":      when_part,
+        "text":          text,
+        "emoji":         slack_emoji,
+        "icon":          icon_char,
+        "expiry_config": expiry_cfg,
+    })
+    return [with_icon({
+        "title":    f'Schedule "{text}" · {spec["desc"]}',
+        "subtitle": subtitle,
+        "arg":      arg,
+        "valid":    True,
+    }, icon_char)]
+
+
+def build_schedule_list_items(config):
+    """List existing schedules with toggle / delete / run-now actions."""
+    schedules = config.get("schedules", [])
+    if not schedules:
+        return [{"title": "No schedules yet",
+                 "subtitle": "Type a status then @ a time — e.g. 🎧 Focusing @ weekdays 9am",
+                 "valid": False}]
+
+    items = []
+    for s in schedules:
+        enabled = s.get("enabled", True)
+        text    = s.get("text", "")
+        icon    = s.get("icon", "")
+        state   = "on" if enabled else "paused"
+        toggle_label = "pause" if enabled else "resume"
+
+        subtitle = (f"{s.get('emoji', '')}  {s.get('desc', '')} · {state} · "
+                    f"⏎ {toggle_label} · ⌘ delete · ⌥ run now")
+
+        run_arg = json.dumps({
+            "text":          text,
+            "emoji":         s.get("emoji", ""),
+            "icon":          icon,
+            "expiry":        compute_expiry_from_config(s.get("expiry", ""))[0],
+            "expiry_config": s.get("expiry", ""),
+        })
+        items.append(with_icon({
+            "title":    f'{text}  ({s.get("desc", "")})',
+            "subtitle": subtitle,
+            "arg":      json.dumps({"action": "toggle_schedule", "id": s.get("id", "")}),
+            "valid":    True,
+            "mods": {
+                "cmd": {"subtitle": f"Delete schedule: {text}",
+                        "arg": json.dumps({"action": "remove_schedule", "id": s.get("id", "")}),
+                        "valid": True},
+                "alt": {"subtitle": f"Set now: {text}",
+                        "arg": run_arg, "valid": True},
+            },
+        }, icon))
+    return items

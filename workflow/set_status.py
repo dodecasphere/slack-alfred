@@ -3,41 +3,14 @@ import json
 import os
 import subprocess
 import sys
-import urllib.request
+import uuid
 
 sys.path.insert(0, os.path.dirname(__file__))
 from common import (CONFIG_FILE, TOKEN_ERROR_FLAG, _AUTH_ERRORS,
                     set_token_error_flag, clear_token_error_flag,
-                    record_usage, load_config, do_setup,
+                    record_usage, load_config, save_config, do_setup,
                     _refresh_custom_emoji_async, write_current_status_cache,
-                    record_recent_status)
-
-
-def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-
-
-def set_slack_status(token, text, emoji, expiry=0):
-    payload = json.dumps({
-        "profile": {
-            "status_text": text,
-            "status_emoji": emoji,
-            "status_expiration": expiry,
-        }
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://slack.com/api/users.profile.set",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json; charset=utf-8",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+                    record_recent_status, set_slack_status, parse_schedule_when)
 
 
 def notify_error(detail=""):
@@ -239,6 +212,90 @@ def remove_preset(status):
 
 
 
+def save_schedule(status):
+    when_raw      = status.get("when_raw", "").strip()
+    text          = status.get("text", "").strip()
+    emoji         = status.get("emoji", "").strip()
+    icon          = status.get("icon", "").strip()
+    expiry_config = status.get("expiry_config", "")
+
+    if not text:
+        notify_error("No status text to schedule.")
+        return
+
+    spec = parse_schedule_when(when_raw)
+    if not spec:
+        notify_error(f"Couldn't understand time: {when_raw!r}")
+        return
+
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    entry = {"id": uuid.uuid4().hex[:8], "enabled": True,
+             "text": text, "emoji": emoji, "icon": icon}
+    if expiry_config:
+        entry["expiry"] = expiry_config
+    entry.update(spec)
+
+    config.setdefault("schedules", []).append(entry)
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't save schedule: {e}")
+        return
+
+    print(f"{icon}  Scheduled: {text} · {spec['desc']}" if icon
+          else f"Scheduled: {text} · {spec['desc']}")
+
+
+def remove_schedule(status):
+    sid = status.get("id", "")
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    schedules = config.get("schedules", [])
+    removed   = next((s for s in schedules if s.get("id") == sid), None)
+    config["schedules"] = [s for s in schedules if s.get("id") != sid]
+    if removed is None:
+        notify_error("Schedule not found.")
+        return
+
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't remove schedule: {e}")
+        return
+
+    print(f"Schedule removed: {removed.get('text', '')}")
+
+
+def toggle_schedule(status):
+    sid = status.get("id", "")
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    target = next((s for s in config.get("schedules", []) if s.get("id") == sid), None)
+    if target is None:
+        notify_error("Schedule not found.")
+        return
+
+    target["enabled"] = not target.get("enabled", True)
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't update schedule: {e}")
+        return
+
+    state = "resumed" if target["enabled"] else "paused"
+    print(f"Schedule {state}: {target.get('text', '')}")
+
+
 def main():
     arg = sys.stdin.read().strip()
 
@@ -258,11 +315,14 @@ def main():
         return
 
     _ACTIONS = {
-        "save_preset":   save_preset,
-        "update_preset": update_preset,
-        "edit_preset":   edit_preset,
-        "remove_preset": remove_preset,
-        "save_token":    save_token,
+        "save_preset":     save_preset,
+        "update_preset":   update_preset,
+        "edit_preset":     edit_preset,
+        "remove_preset":   remove_preset,
+        "save_token":      save_token,
+        "save_schedule":   save_schedule,
+        "remove_schedule": remove_schedule,
+        "toggle_schedule": toggle_schedule,
     }
     handler = _ACTIONS.get(status.get("action"))
     if handler:
