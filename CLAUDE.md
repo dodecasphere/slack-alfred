@@ -70,12 +70,13 @@ Receives the `arg` JSON from the selected filter item. Dispatches on the `action
 | `save_preset` | Append entry to `config.json` statuses |
 | `remove_preset` | Remove entry from `config.json` statuses by `title` |
 | `save_schedule` | Parse `when_raw`, append normalized entry to `config.json` schedules |
+| `edit_schedule` | Replace a schedule's status + when in place by `id` (preserves `id`/`enabled`) |
 | `remove_schedule` / `toggle_schedule` | Remove / enable-disable a schedule by `id` |
 | `"setup"` (plain string) | Open Slack API page + show setup dialog |
 
 ### `workflow/scheduler.py` — launchd dispatcher (runs every 60s)
 
-A LaunchAgent (`com.michaeldulle.slack-alfred.scheduler`, written + loaded by `build.sh`) runs this every minute. It loads `config.json` schedules, calls `evaluate_schedule()` (in `common.py`) for each against `datetime.now()`, fires any due within a 300s grace window via the shared `set_slack_status()`, dedupes recurring fires by occurrence key in `schedule_state.json`, deletes fired/missed one-offs from config, and posts a macOS notification per fire. Schedules are created/managed from the `slacks` keyword via an `@` in the query (`<status> @ <when>`); a bare `@` lists/manages them. When-spec parsing lives in `parse_schedule_when()` / `parse_time_of_day()` in `common.py`.
+A LaunchAgent (`com.michaeldulle.slack-alfred.scheduler`, written + loaded by `build.sh`) runs this every minute. It loads `config.json` schedules, calls `evaluate_schedule()` (in `common.py`) for each against `datetime.now()`, fires any due within a 300s grace window via the shared `set_slack_status()`, dedupes recurring fires by occurrence key in `schedule_state.json`, deletes fired/missed one-offs from config, and posts a macOS notification per fire. Schedules are created/managed from the `slacks` keyword via an `@` in the query (`<status> @ <when>`); a bare `@` lists/manages them, and Tab on a list item autocompletes to `@edit <id> <status> @ <when>` (reconstructed by `_schedule_to_query()`) for in-place editing. When-spec parsing lives in `parse_schedule_when()` / `parse_time_of_day()` in `common.py`.
 
 A schedule entry in `config.json` (recurring; one-off uses `"kind": "one_off"` with an absolute `"timestamp"` resolved at save time so "tomorrow" doesn't drift):
 

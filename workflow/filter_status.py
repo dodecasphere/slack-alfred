@@ -15,8 +15,9 @@ from common import (
     build_remove_confirm_submenu, build_token_submenu, build_setup_item,
     build_token_error_item, search_emoji, _refresh_custom_emoji_async,
     build_current_status_item, _current_status_needs_rerun,
-    build_recent_status_items,
+    build_recent_status_items, _SCHED_EDIT_PREFIX,
     build_schedule_list_items, build_schedule_create_items,
+    build_schedule_edit_items,
 )
 
 # Matches a trailing uncompleted :emoji_fragment — triggers emoji suggestion mode
@@ -98,7 +99,12 @@ def main():
         return
 
     # Schedule mode — any '@' in the query. Bare '@' lists/manages schedules;
-    # '<status> @ <when>' previews a new schedule.
+    # '@edit <id> ...' edits one in place; '<status> @ <when>' previews a new one.
+    if raw.startswith(_SCHED_EDIT_PREFIX):
+        items = build_schedule_edit_items(raw[len(_SCHED_EDIT_PREFIX):])
+        print(json.dumps({"items": items}))
+        return
+
     if "@" in raw:
         status_part, _, when_part = raw.partition("@")
         status_part = status_part.strip()

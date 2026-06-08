@@ -250,6 +250,52 @@ def save_schedule(status):
           else f"Scheduled: {text} · {spec['desc']}")
 
 
+def edit_schedule(status):
+    sid           = status.get("id", "")
+    when_raw      = status.get("when_raw", "").strip()
+    text          = status.get("text", "").strip()
+    emoji         = status.get("emoji", "").strip()
+    icon          = status.get("icon", "").strip()
+    expiry_config = status.get("expiry_config", "")
+
+    if not text:
+        notify_error("No status text to schedule.")
+        return
+
+    spec = parse_schedule_when(when_raw)
+    if not spec:
+        notify_error(f"Couldn't understand time: {when_raw!r}")
+        return
+
+    config = load_config()
+    if not config:
+        notify_error("Couldn't read config file.")
+        return
+
+    target = next((s for s in config.get("schedules", []) if s.get("id") == sid), None)
+    if target is None:
+        notify_error("Schedule not found.")
+        return
+
+    # Replace everything except identity/enabled state. Clear stale spec keys
+    # (days/hour/minute vs timestamp) before applying the new kind.
+    for k in ("kind", "days", "hour", "minute", "timestamp", "desc", "expiry"):
+        target.pop(k, None)
+    target.update({"text": text, "emoji": emoji, "icon": icon})
+    if expiry_config:
+        target["expiry"] = expiry_config
+    target.update(spec)
+
+    try:
+        save_config(config)
+    except Exception as e:
+        notify_error(f"Couldn't update schedule: {e}")
+        return
+
+    print(f"{icon}  Schedule updated: {text} · {spec['desc']}" if icon
+          else f"Schedule updated: {text} · {spec['desc']}")
+
+
 def remove_schedule(status):
     sid = status.get("id", "")
     config = load_config()
@@ -321,6 +367,7 @@ def main():
         "remove_preset":   remove_preset,
         "save_token":      save_token,
         "save_schedule":   save_schedule,
+        "edit_schedule":   edit_schedule,
         "remove_schedule": remove_schedule,
         "toggle_schedule": toggle_schedule,
     }

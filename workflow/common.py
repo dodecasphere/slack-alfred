@@ -30,6 +30,7 @@ _SUBMENU_PREFIX = "» "
 _REMOVE_SUFFIX  = " » remove"
 _EDIT_INFIX     = "» edit"
 _TOKEN_SUBMENU  = "Update Token"
+_SCHED_EDIT_PREFIX = "@edit "
 
 DEFAULT_STATUSES = [
     {"title": "In a meeting",        "emoji": ":calendar:",              "text": "In a meeting",        "icon": "📅"},
@@ -1191,8 +1192,61 @@ def build_schedule_create_items(status_part, when_part):
     }, icon_char)]
 
 
+def _days_to_token(days):
+    """Inverse of _parse_day_spec: weekday ints → a re-parseable token."""
+    s = sorted(set(days))
+    if s == list(range(7)):
+        return "daily"
+    if s == [0, 1, 2, 3, 4]:
+        return "weekdays"
+    if s == [5, 6]:
+        return "weekends"
+    abbr = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    return ",".join(abbr[d] for d in s)
+
+
+def _schedule_to_query(sched):
+    """Reconstruct a re-parseable '<status> @ <when>' string for editing."""
+    icon  = sched.get("icon", "")
+    emoji = sched.get("emoji", "")
+    text  = sched.get("text", "")
+    status = f"{icon} {emoji} {text}" if icon and icon != emoji else f"{emoji} {text}"
+    status = status.strip()
+    if sched.get("expiry"):
+        status += f" for {sched['expiry']}"
+
+    if sched.get("kind") == "one_off":
+        when = datetime.fromtimestamp(sched.get("timestamp", 0)).strftime("%Y-%m-%d %H:%M")
+    else:
+        when = f"{_days_to_token(sched.get('days', []))} " \
+               f"{sched.get('hour', 0):02d}:{sched.get('minute', 0):02d}"
+    return f"{status} @ {when}"
+
+
+def build_schedule_edit_items(edit_query):
+    """Preview for '@edit <id> <status> @ <when>'. Returns Alfred items."""
+    parts = edit_query.strip().split(None, 1)
+    if not parts:
+        return [{"title": "Editing schedule…", "valid": False}]
+    sid  = parts[0]
+    body = parts[1] if len(parts) > 1 else ""
+
+    status_part, _, when_part = body.partition("@")
+    items = build_schedule_create_items(status_part.strip(), when_part.strip())
+
+    # Re-target the create preview as an in-place update.
+    for it in items:
+        if it.get("valid") and it.get("arg"):
+            arg = json.loads(it["arg"])
+            arg["action"] = "edit_schedule"
+            arg["id"]     = sid
+            it["arg"]     = json.dumps(arg)
+            it["title"]   = it["title"].replace('Schedule "', 'Update "', 1)
+    return items
+
+
 def build_schedule_list_items(config):
-    """List existing schedules with toggle / delete / run-now actions."""
+    """List existing schedules with edit / toggle / delete / run-now actions."""
     schedules = config.get("schedules", [])
     if not schedules:
         return [{"title": "No schedules yet",
@@ -1208,7 +1262,7 @@ def build_schedule_list_items(config):
         toggle_label = "pause" if enabled else "resume"
 
         subtitle = (f"{s.get('emoji', '')}  {s.get('desc', '')} · {state} · "
-                    f"⏎ {toggle_label} · ⌘ delete · ⌥ run now")
+                    f"⇥ edit · ⏎ {toggle_label} · ⌘ delete · ⌥ run now")
 
         run_arg = json.dumps({
             "text":          text,
@@ -1218,10 +1272,11 @@ def build_schedule_list_items(config):
             "expiry_config": s.get("expiry", ""),
         })
         items.append(with_icon({
-            "title":    f'{text}  ({s.get("desc", "")})',
-            "subtitle": subtitle,
-            "arg":      json.dumps({"action": "toggle_schedule", "id": s.get("id", "")}),
-            "valid":    True,
+            "title":        f'{text}  ({s.get("desc", "")})',
+            "subtitle":     subtitle,
+            "autocomplete": f"{_SCHED_EDIT_PREFIX}{s.get('id', '')} {_schedule_to_query(s)}",
+            "arg":          json.dumps({"action": "toggle_schedule", "id": s.get("id", "")}),
+            "valid":        True,
             "mods": {
                 "cmd": {"subtitle": f"Delete schedule: {text}",
                         "arg": json.dumps({"action": "remove_schedule", "id": s.get("id", "")}),

@@ -4,6 +4,7 @@ Tests for scheduling: when-spec parsing and the dispatcher due-logic in
 workflow/common.py. Run with: python3 -m unittest discover tests
 """
 import importlib.util
+import json
 import os
 import sys
 import unittest
@@ -175,6 +176,67 @@ class TestEvaluateSchedule(unittest.TestCase):
         ts = int((NOW - timedelta(hours=1)).timestamp())
         action, _ = wf.evaluate_schedule(self._one(ts), NOW, set())
         self.assertEqual(action, "expire")
+
+
+class TestScheduleRoundTrip(unittest.TestCase):
+    """_schedule_to_query must produce a string that re-parses to the same spec."""
+
+    def _roundtrip_when(self, sched):
+        q = wf._schedule_to_query(sched)
+        _status, _, when = q.partition("@")
+        return wf.parse_schedule_when(when.strip(), now=NOW)
+
+    def test_recurring_roundtrip(self):
+        sched = {"kind": "recurring", "days": [0, 2, 4], "hour": 17, "minute": 0}
+        spec = self._roundtrip_when(sched)
+        self.assertEqual(spec["days"], [0, 2, 4])
+        self.assertEqual((spec["hour"], spec["minute"]), (17, 0))
+
+    def test_weekdays_roundtrip(self):
+        sched = {"kind": "recurring", "days": [0, 1, 2, 3, 4], "hour": 9, "minute": 30}
+        spec = self._roundtrip_when(sched)
+        self.assertEqual(spec["days"], [0, 1, 2, 3, 4])
+        self.assertEqual((spec["hour"], spec["minute"]), (9, 30))
+
+    def test_oneoff_roundtrip(self):
+        ts = int(datetime(2026, 12, 25, 15, 0).timestamp())
+        spec = self._roundtrip_when({"kind": "one_off", "timestamp": ts})
+        self.assertEqual(spec["kind"], "one_off")
+        self.assertEqual(spec["timestamp"], ts)
+
+    def test_status_with_expiry_roundtrip(self):
+        sched = {"kind": "recurring", "days": [0], "hour": 9, "minute": 0,
+                 "text": "Focusing", "emoji": ":headphones:", "icon": "🎧",
+                 "expiry": "2h"}
+        q = wf._schedule_to_query(sched)
+        status, _, _when = q.partition("@")
+        icon, emoji, text, _ts, _d, cfg = wf.parse_custom_status(status.strip())
+        self.assertEqual(text, "Focusing")
+        self.assertEqual(emoji, ":headphones:")
+        self.assertEqual(icon, "🎧")
+        self.assertEqual(cfg, "2h")
+
+    def test_days_to_token(self):
+        self.assertEqual(wf._days_to_token([0, 1, 2, 3, 4, 5, 6]), "daily")
+        self.assertEqual(wf._days_to_token([0, 1, 2, 3, 4]), "weekdays")
+        self.assertEqual(wf._days_to_token([5, 6]), "weekends")
+        self.assertEqual(wf._days_to_token([0, 2, 4]), "mon,wed,fri")
+
+
+class TestBuildScheduleEditItems(unittest.TestCase):
+    def test_edit_item_targets_existing_id(self):
+        items = wf.build_schedule_edit_items("abc123 🎧 Focusing @ weekdays 9am")
+        self.assertEqual(len(items), 1)
+        arg = json.loads(items[0]["arg"])
+        self.assertEqual(arg["action"], "edit_schedule")
+        self.assertEqual(arg["id"], "abc123")
+        self.assertEqual(arg["text"], "Focusing")
+        self.assertEqual(arg["when_raw"], "weekdays 9am")
+        self.assertTrue(items[0]["title"].startswith('Update "'))
+
+    def test_edit_invalid_time_not_valid(self):
+        items = wf.build_schedule_edit_items("abc123 🎧 Focusing @ blah")
+        self.assertFalse(items[0].get("valid", False))
 
 
 if __name__ == "__main__":
