@@ -16,6 +16,18 @@ echo -e "${BOLD}Slack Status — Alfred Workflow Setup${RESET}"
 echo -e "${DIM}────────────────────────────────────${RESET}"
 echo ""
 
+# ── Preflight: Python 3 ──────────────────────────────────────────────────────
+# macOS ships no working Python 3 by default. Fail fast here, before the Slack
+# app walkthrough, rather than partway through build.sh.
+if ! command -v python3 >/dev/null 2>&1 || ! python3 -c 'import sys' >/dev/null 2>&1; then
+    echo -e "${RED}${BOLD}Python 3 not found.${RESET}"
+    echo -e "  This workflow needs a working Python 3. Install it with either:"
+    echo -e "    ${BOLD}xcode-select --install${RESET}   ${DIM}(Apple Command Line Tools)${RESET}"
+    echo -e "    ${BOLD}brew install python3${RESET}      ${DIM}(Homebrew)${RESET}"
+    echo -e "  then re-run this setup."
+    exit 1
+fi
+
 # ── Step 1: Create a Slack app ───────────────────────────────────────────────
 echo -e "${CYAN}${BOLD}Step 1${RESET}  Create a Slack app"
 echo ""
@@ -28,16 +40,18 @@ open "https://api.slack.com/apps"
 echo ""
 
 # ── Step 2: Add the required scope ───────────────────────────────────────────
-echo -e "${CYAN}${BOLD}Step 2${RESET}  Add the required permission scope"
+echo -e "${CYAN}${BOLD}Step 2${RESET}  Add the required permission scopes"
 echo ""
 echo -e "  In your new app:"
 echo -e "  1. Go to ${BOLD}OAuth & Permissions${RESET} in the left sidebar."
 echo -e "  2. Scroll to ${BOLD}User Token Scopes${RESET}."
-echo -e "  3. Click ${BOLD}Add an OAuth Scope${RESET} and add both of these scopes:"
+echo -e "  3. Click ${BOLD}Add an OAuth Scope${RESET} and add all four of these scopes:"
 echo -e "       ${BOLD}users.profile:write${RESET}  — set your status"
+echo -e "       ${BOLD}users.profile:read${RESET}   — show your current status"
 echo -e "       ${BOLD}users:write${RESET}          — set your presence (active/away)"
+echo -e "       ${BOLD}emoji:read${RESET}           — suggest your workspace's custom emoji"
 echo ""
-read -rp "$(echo -e "  ${DIM}Press Enter once you've added the scope…${RESET}")"
+read -rp "$(echo -e "  ${DIM}Press Enter once you've added the scopes…${RESET}")"
 echo ""
 
 # ── Step 3: Install and copy the token ───────────────────────────────────────

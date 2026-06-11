@@ -1,6 +1,6 @@
 # Slack Status — Alfred Workflow
 
-Set your Slack status from Alfred. Requires Alfred with a Powerpack license.
+Set your Slack status from Alfred. Requires Alfred with a Powerpack license and Python 3 (`xcode-select --install` or `brew install python3` — the installer checks and tells you if it's missing).
 
 ## Installation
 
