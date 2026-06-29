@@ -896,6 +896,19 @@ class TestBuildCurrentStatusItem(unittest.TestCase):
         _, mock_fetch = self._build(None)
         mock_fetch.assert_called_once_with("xoxp-fake-token")
 
+    def test_loading_item_cmd_mod_clears_status(self):
+        item, _ = self._build(None)
+        cmd = item.get("mods", {}).get("cmd", {})
+        self.assertTrue(cmd.get("valid", False))
+        arg = json.loads(cmd["arg"])
+        self.assertEqual(arg["text"], "")
+        self.assertEqual(arg["emoji"], "")
+        self.assertEqual(arg["expiry"], 0)
+
+    def test_loading_item_subtitle_includes_clear_hint(self):
+        item, _ = self._build(None)
+        self.assertIn("⌘↩", item["subtitle"])
+
     def test_no_status_set_shows_no_status_item(self):
         item, _ = self._build({"status_text": "", "status_emoji": "", "status_expiration": 0})
         self.assertIn("No status", item["title"])

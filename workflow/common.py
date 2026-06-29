@@ -1058,13 +1058,22 @@ def _fetch_current_status_async(token):
 def build_current_status_item(token):
     cache = load_current_status_cache()
 
+    clear_arg = json.dumps({"text": "", "emoji": "", "icon": "", "expiry": 0, "expiry_config": ""})
+
     if cache is None:
         if token:
             _fetch_current_status_async(token)
+        # Clearing is safe regardless of the (still-loading) current status, so
+        # offer ⌘↩ to clear immediately rather than forcing a wait for the fetch.
         return with_icon({
             "title":    "Fetching status…",
-            "subtitle": "Current Slack status loading",
+            "subtitle": "Current Slack status loading · ⌘↩ to clear",
             "valid":    False,
+            "mods": {"cmd": {
+                "subtitle": "Clear status",
+                "arg":      clear_arg,
+                "valid":    True,
+            }},
         }, "💬")
 
     text       = cache.get("status_text", "")
@@ -1080,7 +1089,6 @@ def build_current_status_item(token):
 
     expiry_str  = format_expiry_countdown(expiration)
     subtitle    = f"{expiry_str} · ⌘↩ to clear" if expiry_str else "⌘↩ to clear"
-    clear_arg   = json.dumps({"text": "", "emoji": "", "icon": "", "expiry": 0, "expiry_config": ""})
     return with_icon({
         "title":    f"Current status: {text}",
         "subtitle": subtitle,
