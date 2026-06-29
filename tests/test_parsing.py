@@ -846,15 +846,23 @@ class TestCurrentStatusCache(unittest.TestCase):
 
 class TestCurrentStatusNeedsRerun(unittest.TestCase):
 
-    def _needs(self, cache_data, now=FIXED_TIME):
+    def _needs(self, cache_data, now=FIXED_TIME, fetch_age=None):
         with mock.patch("common.load_current_status_cache", return_value=cache_data), \
+             mock.patch("common._seconds_since_fetch_attempt", return_value=fetch_age), \
              mock.patch("common.time") as mt:
             mt.time.return_value = now
             return wf._current_status_needs_rerun()
 
-    def test_cache_miss_does_not_need_rerun(self):
-        # Loading state stays static — rerunning while fetching causes refocus on every second.
-        self.assertFalse(self._needs(None))
+    def test_cache_miss_with_fetch_in_flight_needs_rerun(self):
+        # While a fetch is in flight, auto-refresh so the status appears without a keystroke.
+        self.assertTrue(self._needs(None, fetch_age=2))
+
+    def test_cache_miss_with_stale_fetch_does_not_need_rerun(self):
+        # Past the deadline the fetch has given up — stop spinning.
+        self.assertFalse(self._needs(None, fetch_age=99))
+
+    def test_cache_miss_with_no_fetch_does_not_need_rerun(self):
+        self.assertFalse(self._needs(None, fetch_age=None))
 
     def test_no_expiry_does_not_need_rerun(self):
         self.assertFalse(self._needs({"status_text": "Focusing", "status_expiration": 0}))
@@ -879,8 +887,9 @@ class TestCurrentStatusNeedsRerun(unittest.TestCase):
 
 class TestBuildCurrentStatusItem(unittest.TestCase):
 
-    def _build(self, cache_data, now=FIXED_TIME):
+    def _build(self, cache_data, now=FIXED_TIME, fetch_age=None):
         with mock.patch("common.load_current_status_cache", return_value=cache_data), \
+             mock.patch("common._seconds_since_fetch_attempt", return_value=fetch_age), \
              mock.patch("common._fetch_current_status_async") as mock_fetch, \
              mock.patch("common.time") as mt:
             mt.time.return_value = now
@@ -894,6 +903,14 @@ class TestBuildCurrentStatusItem(unittest.TestCase):
 
     def test_cache_miss_fires_async_fetch(self):
         _, mock_fetch = self._build(None)
+        mock_fetch.assert_called_once_with("xoxp-fake-token")
+
+    def test_cache_miss_does_not_refire_while_fetch_in_flight(self):
+        _, mock_fetch = self._build(None, fetch_age=2)
+        mock_fetch.assert_not_called()
+
+    def test_cache_miss_refires_when_previous_fetch_stale(self):
+        _, mock_fetch = self._build(None, fetch_age=99)
         mock_fetch.assert_called_once_with("xoxp-fake-token")
 
     def test_loading_item_cmd_mod_clears_status(self):

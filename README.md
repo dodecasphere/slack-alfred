@@ -35,7 +35,7 @@ To rebuild after changes:
 
 Choose from a list of presets or type your own custom status.
 
-The top item always shows your **current Slack status** with a live expiry countdown. **⌘Enter** on it clears your status immediately.
+The top item always shows your **current Slack status** with a live expiry countdown. It refreshes on its own the moment it loads, and **⌘Enter** clears your status immediately, even while it's still loading.
 
 Below your presets, any status you've set in the **last 10 days** appears as a recent — ready to re-apply with Enter or save as a preset with ⌘Enter.
 

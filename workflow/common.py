@@ -15,10 +15,12 @@ TOKEN_ERROR_FLAG   = os.path.expanduser("~/.config/slack-alfred/token_error")
 CUSTOM_EMOJI_CACHE        = os.path.expanduser("~/.config/slack-alfred/custom_emoji.json")
 CUSTOM_EMOJI_IMAGES_DONE  = os.path.expanduser("~/.config/slack-alfred/custom_emoji_images.done")
 CURRENT_STATUS_CACHE      = os.path.expanduser("~/.config/slack-alfred/current_status.json")
+CURRENT_STATUS_FETCH_MARKER = os.path.expanduser("~/.config/slack-alfred/current_status_fetch.marker")
 RECENT_STATUSES_FILE      = os.path.expanduser("~/.config/slack-alfred/recent_statuses.json")
 SCHEDULE_STATE_FILE       = os.path.expanduser("~/.config/slack-alfred/schedule_state.json")
 
 _CURRENT_STATUS_TTL  = 60   # seconds
+_CURRENT_STATUS_FETCH_DEADLINE = 8  # seconds to keep auto-refreshing while a fetch is in flight
 _RECENT_STATUSES_DAYS = 10
 
 _EMOJI_LIST_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "emoji.json")
@@ -1036,11 +1038,25 @@ def write_current_status_cache(text, emoji, expiration):
         pass
 
 
+def _seconds_since_fetch_attempt():
+    """Seconds since the last background fetch was kicked off, or None if never/unreadable."""
+    try:
+        with open(CURRENT_STATUS_FETCH_MARKER) as f:
+            return time.time() - float(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
 def _current_status_needs_rerun():
-    """True only for sub-60s expiry countdown. Loading state is static to avoid refocus."""
+    """Tell Alfred to auto-refresh the Script Filter when the displayed state is
+    still changing: while a status fetch is in flight (so it appears without a
+    keystroke), and during a sub-60s expiry countdown (so the seconds tick)."""
     cache = load_current_status_cache()
     if cache is None:
-        return False
+        # Only spin while a fetch is plausibly still running; past the deadline
+        # it has given up (e.g. network/token failure writes no cache).
+        age = _seconds_since_fetch_attempt()
+        return age is not None and age < _CURRENT_STATUS_FETCH_DEADLINE
     expiration = cache.get("status_expiration", 0)
     if expiration:
         remaining = expiration - time.time()
@@ -1050,6 +1066,12 @@ def _current_status_needs_rerun():
 
 
 def _fetch_current_status_async(token):
+    try:
+        os.makedirs(os.path.dirname(CURRENT_STATUS_FETCH_MARKER), exist_ok=True)
+        with open(CURRENT_STATUS_FETCH_MARKER, "w") as f:
+            f.write(str(time.time()))
+    except OSError:
+        pass
     fetch_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_status.py")
     subprocess.Popen([sys.executable, fetch_script, token],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -1061,8 +1083,12 @@ def build_current_status_item(token):
     clear_arg = json.dumps({"text": "", "emoji": "", "icon": "", "expiry": 0, "expiry_config": ""})
 
     if cache is None:
+        # Fire a fetch only when one isn't already in flight, so the per-second
+        # reruns while loading don't spawn a pile of fetch subprocesses.
         if token:
-            _fetch_current_status_async(token)
+            age = _seconds_since_fetch_attempt()
+            if age is None or age >= _CURRENT_STATUS_FETCH_DEADLINE:
+                _fetch_current_status_async(token)
         # Clearing is safe regardless of the (still-loading) current status, so
         # offer ⌘↩ to clear immediately rather than forcing a wait for the fetch.
         return with_icon({
