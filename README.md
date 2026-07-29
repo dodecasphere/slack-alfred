@@ -30,6 +30,8 @@ To rebuild after changes:
 |---------|-------------|
 | `slacks` | Set your Slack status |
 | `slackp` | Set your Slack presence (Active / Away) |
+| `slc` | Set your Slack presence to Active instantly, no menu |
+| `slw` | Set your Slack presence to Away instantly, no menu |
 
 ## Status (`slacks`)
 
@@ -105,6 +107,8 @@ Scheduling runs via a `launchd` agent that checks every minute (installed by `bu
 ## Presence (`slackp`)
 
 - **Enter** on Active or Away — set immediately
+
+`slc` and `slw` are one-keystroke shortcuts that skip the menu and set Active / Away directly.
 
 ## Config
 
