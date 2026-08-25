@@ -65,7 +65,7 @@ if [ -n "$EXISTING" ]; then
                 echo -e "  ${RED}That's a git checkout — we won't delete it.${RESET}"
                 echo -e "  Unlinking it instead; the files stay where they are."
             fi
-            bash "$STAGING/uninstall.sh" --keep-token
+            bash "$STAGING/uninstall.sh" --yes --keep-token   # already confirmed by the menu
             FRESH=true
             ;;
         *)

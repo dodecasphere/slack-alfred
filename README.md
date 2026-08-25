@@ -27,9 +27,10 @@ Clone the repo and run:
 ### Uninstalling
 
 ```bash
-./uninstall.sh             # scheduler, links, and the downloaded copy
-./uninstall.sh --keep-token
+curl -fsSL https://raw.githubusercontent.com/dodecasphere/slack-alfred/main/uninstall.sh | bash
 ```
+
+Shows what it will remove and asks first. From a checkout, `./uninstall.sh` does the same, plus `--yes` to skip the prompt and `--keep-token` to leave your token for a reinstall. A git checkout is unlinked, never deleted.
 
 Then delete the workflow in Alfred Preferences.
 

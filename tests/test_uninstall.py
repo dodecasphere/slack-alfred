@@ -38,8 +38,9 @@ class UninstallTests(unittest.TestCase):
         return path
 
     def run_uninstall(self, *flags):
+        # --yes: the confirmation prompt itself is covered in test_uninstall_remote.
         result = subprocess.run(
-            ["bash", UNINSTALL, *flags],
+            ["bash", UNINSTALL, "--yes", *flags],
             capture_output=True,
             text=True,
             env={**os.environ, "HOME": self.tmp, "XDG_CONFIG_HOME": ""},
