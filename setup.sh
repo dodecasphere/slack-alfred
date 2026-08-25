@@ -11,6 +11,18 @@ RESET='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/config.json"
 
+# ── Reattach to the terminal ─────────────────────────────────────────────────
+# `curl … | bash` leaves stdin pointing at the download pipe, so every `read`
+# below would hit EOF instantly and the script would die mid-walkthrough with
+# no prompt and no error. Grab the real terminal back.
+if [ ! -t 0 ]; then
+    if ! exec < /dev/tty; then
+        echo "setup.sh is interactive and needs a terminal." >&2
+        echo "Run it directly: bash $SCRIPT_DIR/setup.sh" >&2
+        exit 1
+    fi
+fi
+
 echo ""
 echo -e "${BOLD}Slack Status — Alfred Workflow Setup${RESET}"
 echo -e "${DIM}────────────────────────────────────${RESET}"
