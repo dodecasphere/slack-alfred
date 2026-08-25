@@ -12,19 +12,26 @@ This downloads the workflow, opens a prefilled Slack app link (all permissions p
 
 The app requests four user scopes: `users.profile:write` (set status), `users.profile:read` (show current status), `users:write` (set presence), and `emoji:read` (workspace emoji suggestions). Nothing else, no bot user.
 
+Re-running the installer is safe. It finds whatever install is already wired up and offers to update it, remove it and start fresh, or cancel. A git checkout is used where it sits, never overwritten or deleted, and an existing token is kept.
+
 ### Manual installation
 
 Clone the repo and run:
 
 ```bash
-./setup.sh
+./setup.sh                 # walks you through the Slack app if no token is set
+./setup.sh --reconfigure   # set up a different Slack app
+./build.sh                 # rebuild after changes
 ```
 
-To rebuild after changes:
+### Uninstalling
 
 ```bash
-./build.sh
+./uninstall.sh             # scheduler, links, and the downloaded copy
+./uninstall.sh --keep-token
 ```
+
+Then delete the workflow in Alfred Preferences.
 
 ## Usage
 

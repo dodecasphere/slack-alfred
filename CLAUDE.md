@@ -130,6 +130,18 @@ is the fallback if URL construction fails. Slack has no way to hand back the `xo
 user token programmatically, so the paste step stays. Scope changes go in the
 manifest (covered by `tests/test_manifest.py`), not in setup.sh prose.
 
+### Install detection (`tools/detect_install.sh`)
+
+`install.sh` stages the tarball in a temp dir, sources `tools/detect_install.sh`
+from it, and asks what to do with any install it finds. `detect_install()` treats
+the `~/.config/slack-alfred/config.json` symlink as the authority (it is what the
+workflow reads through), falling back to `~/.local/share/slack-alfred`.
+`install_kind()` returns `dev` for a git checkout, which is never overwritten or
+deleted, only re-run in place. `setup.sh` skips the Slack walkthrough when
+`has_token()` passes, unless `--reconfigure` is given, and only reattaches to
+`/dev/tty` on the paths that actually prompt. `SLACK_ALFRED_NO_BUILD=1` is a test
+seam that exits before `build.sh`. `uninstall.sh` reuses the same detection.
+
 ### Alfred workflow wiring (`workflow/info.plist`)
 
 ```
