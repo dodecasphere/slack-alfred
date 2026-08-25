@@ -8,7 +8,9 @@ Set your Slack status from Alfred. Requires Alfred with a Powerpack license and 
 curl -fsSL https://raw.githubusercontent.com/dodecasphere/slack-alfred/main/install.sh | bash
 ```
 
-This downloads the workflow, walks you through creating a Slack app and getting a token, then installs everything in Alfred automatically. You need four Slack permission scopes: `users.profile:write` for setting status, `users.profile:read` for reading your current status, `users:write` for setting presence, and `emoji:read` for workspace emoji suggestions.
+This downloads the workflow, opens a prefilled Slack app link (all permissions preselected from `slack-app-manifest.json`), takes the token you paste back, and installs everything in Alfred. Two clicks in the browser, one paste.
+
+The app requests four user scopes: `users.profile:write` (set status), `users.profile:read` (show current status), `users:write` (set presence), and `emoji:read` (workspace emoji suggestions). Nothing else, no bot user.
 
 ### Manual installation
 

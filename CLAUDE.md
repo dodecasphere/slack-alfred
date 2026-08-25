@@ -119,6 +119,17 @@ Success output (printed to stdout): a plain string that Alfred's Post Notificati
 
 `DEFAULT_STATUSES` in `filter.py` is the fallback list shown when `config.json` has no `statuses` key.
 
+### App provisioning (`slack-app-manifest.json` + `tools/manifest_url.py`)
+
+`setup.sh` does not walk the user through Slack's OAuth settings UI. It builds a
+prefilled app-creation URL (`https://api.slack.com/apps?new_app=1&manifest_json=...`)
+from `slack-app-manifest.json` via `tools/manifest_url.py`, so the app is created
+with all four user scopes already set. The manifest is also copied to the clipboard
+as a fallback for Slack's "From an app manifest" paste flow, and the plain apps page
+is the fallback if URL construction fails. Slack has no way to hand back the `xoxp`
+user token programmatically, so the paste step stays. Scope changes go in the
+manifest (covered by `tests/test_manifest.py`), not in setup.sh prose.
+
 ### Alfred workflow wiring (`workflow/info.plist`)
 
 ```

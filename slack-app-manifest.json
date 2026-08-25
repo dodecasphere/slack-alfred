@@ -1,0 +1,22 @@
+{
+  "display_information": {
+    "name": "Status Setter",
+    "description": "Sets your Slack status and presence from Alfred.",
+    "background_color": "#4a154b"
+  },
+  "oauth_config": {
+    "scopes": {
+      "user": [
+        "users.profile:write",
+        "users.profile:read",
+        "users:write",
+        "emoji:read"
+      ]
+    }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
