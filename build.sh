@@ -45,23 +45,8 @@ fi
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$SCRIPT_DIR/icons"
 
-symlink() {
-    local target="$1"
-    local link="$2"
-
-    if [ -L "$link" ]; then
-        return
-    fi
-    if [ -e "$link" ]; then
-        if [[ "$link" == *.json ]] && grep -q "xoxp-YOUR-TOKEN-HERE" "$target" 2>/dev/null; then
-            cp "$link" "$target"
-            echo -e "  Migrated existing $(basename "$link") → repo"
-        fi
-        mv "$link" "${link}.bak"
-        echo -e "  Backed up existing $(basename "$link")"
-    fi
-    ln -s "$target" "$link"
-}
+# shellcheck source=tools/link_config.sh
+source "$SCRIPT_DIR/tools/link_config.sh"
 
 symlink "$SCRIPT_DIR/config.json" "$CONFIG_DIR/config.json"
 symlink "$SCRIPT_DIR/icons"       "$CONFIG_DIR/icons"

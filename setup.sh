@@ -93,8 +93,17 @@ echo ""
 echo -e "${CYAN}${BOLD}Step 3${RESET}  Writing config file"
 echo ""
 
-# Write token into config.json in the repo (build.sh will symlink it)
-sed "s/xoxp-YOUR-TOKEN-HERE/$token/" "$SCRIPT_DIR/config.example.json" > "$CONFIG_FILE"
+# Write the token into config.json (build.sh symlinks it into ~/.config).
+# json.dump rather than sed: a token is not a safe sed replacement string.
+TOKEN="$token" python3 - "$SCRIPT_DIR/config.example.json" "$CONFIG_FILE" <<'PY'
+import json, os, sys
+with open(sys.argv[1]) as f:
+    config = json.load(f)
+config["token"] = os.environ["TOKEN"]
+with open(sys.argv[2], "w") as f:
+    json.dump(config, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+PY
 
 echo -e "  ${GREEN}✓${RESET}  Config written to ${BOLD}config.json${RESET}"
 echo ""
