@@ -250,25 +250,17 @@ def parse_expiry_token(text):
 
 def extract_expiry(text):
     """
-    Strip an expiry expression from the end of text. Accepts 'for <expr>',
-    'until <expr>', or a bare expiry as the last 1-2 words.
+    Split 'text - <expiry>' on the last spaced dash. The tail may carry an
+    optional 'for'/'until'. If the tail isn't a valid expiry the dash is just
+    text. Timing words without a dash ('back by 1pm') are never parsed.
     Returns (expiry_ts, expiry_display, expiry_config_str, clean_text).
     expiry_ts=0 means no expiry.
     """
-    for pattern in (r'\bfor\s+(.+)$', r'\buntil\s+(.+)$'):
-        m = re.search(pattern, text, re.IGNORECASE)
-        if m:
-            ts, display, cfg = parse_expiry_token(m.group(1).strip())
-            if ts is not None:
-                return ts, display, cfg, text[:m.start()].strip()
-
-    words = text.split()
-    for n in (2, 1):
-        if len(words) > n:
-            ts, display, cfg = parse_expiry_token(" ".join(words[-n:]))
-            if ts is not None:
-                return ts, display, cfg, " ".join(words[:-n])
-
+    m = re.match(r'^(.*\S)\s+-\s+(\S.*)$', text.strip())
+    if m:
+        ts, display, cfg = parse_expiry_token(m.group(2))
+        if ts is not None:
+            return ts, display, cfg, m.group(1)
     return 0, "", "", text
 
 
@@ -1247,7 +1239,7 @@ def _schedule_to_query(sched):
     status = f"{icon} {emoji} {text}" if icon and icon != emoji else f"{emoji} {text}"
     status = status.strip()
     if sched.get("expiry"):
-        status += f" for {sched['expiry']}"
+        status += f" - {sched['expiry']}"
 
     if sched.get("kind") == "one_off":
         when = datetime.fromtimestamp(sched.get("timestamp", 0)).strftime("%Y-%m-%d %H:%M")

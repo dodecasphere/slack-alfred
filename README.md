@@ -79,15 +79,17 @@ Type `:` anywhere in your input to search and insert emoji. Results include both
 
 ### Expiry
 
-Append a duration or time to any custom status — the format determines which it is. `for` and `until` are accepted but optional:
+Add ` - ` and a duration or time to the end of a custom status. Only text after the dash is parsed, so timing words in the message stay put:
 
 ```
-slacks 🎧 focusing 2h
-slacks lunch 45m
-slacks 🧠 :brain: deep work 5pm
-slacks 🎧 focusing for 2h
-slacks 🧠 :brain: deep work until 5pm
+slacks 🎧 focusing - 2h
+slacks lunch - until 1pm
+slacks 🧠 :brain: deep work - 5pm
+slacks at the doctor, back by 1pm
+slacks lunch until 1pm - until 1pm
 ```
+
+The last two show the point: the first has no expiry and keeps "back by 1pm" in the text; the second keeps "until 1pm" in the text *and* expires then. `for` / `until` after the dash are optional.
 
 **Duration formats:** `2m` `2min` `2mins` `2minutes` `2h` `2hr` `2hours` `1h30m` `1.5h`
 **Time formats:** `2pm` `2p` `2:30pm` `14:00` `noon` `midnight` `2 o'clock`
@@ -99,14 +101,14 @@ A bare number ≤ 23 is treated as a clock hour (`5` → 5:00); a bare number > 
 Add `@` and a time to any status to schedule it instead of setting it now — recurring or one-off:
 
 ```
-slacks 🎧 Focusing for 2h @ weekdays 9am
+slacks 🎧 Focusing - 2h @ weekdays 9am
 slacks ⛔ DND @ tomorrow 3pm
 slacks 🏠 Done for the day @ mon,wed,fri 5pm
 slacks 🍔 Lunch @ daily 12:30pm
 slacks 🧠 deep work @ in 2h
 ```
 
-Everything before `@` is the status (same syntax as above, including `for 2h` auto-expiry); everything after is when it fires.
+Everything before `@` is the status (same syntax as above, including ` - 2h` auto-expiry); everything after is when it fires.
 
 **When formats:** `weekdays` · `weekends` · `daily` · day lists (`mon,wed,fri` or `tue thu`) followed by a time · `today 5pm` · `tomorrow 3pm` · `2026-12-25 9am` · `in 2h` · a bare time (`5pm`) for the next occurrence.
 

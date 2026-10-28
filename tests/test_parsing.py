@@ -188,52 +188,78 @@ class TestExtractExpiry(unittest.TestCase):
     def _e(self, text):
         return _with_time(wf.extract_expiry, text)
 
-    # Explicit keywords
-    def test_for_duration(self):
-        ts, display, cfg, clean = self._e("focusing for 2h")
+    # Expiry is only parsed after a spaced " - "
+    def test_dash_duration(self):
+        _, display, _, clean = self._e("focusing - 2h")
         self.assertEqual(clean, "focusing")
         self.assertEqual(display, "expires in 2h")
 
-    def test_until_time(self):
-        _, display, _, clean = self._e("focusing until 5pm")
-        self.assertEqual(clean, "focusing")
+    def test_dash_time(self):
+        _, display, _, clean = self._e("lunch - 5pm")
+        self.assertEqual(clean, "lunch")
         self.assertIn("5:00 PM", display)
 
-    def test_for_time_format_wins(self):
-        _, display, _, clean = self._e("focusing for 5pm")
-        self.assertEqual(clean, "focusing")
-        self.assertIn("5:00 PM", display)
+    def test_dash_with_until_keyword(self):
+        _, display, _, clean = self._e("lunch - until 1pm")
+        self.assertEqual(clean, "lunch")
+        self.assertIn("1:00 PM", display)
 
-    def test_until_duration_format_wins(self):
-        _, display, _, clean = self._e("focusing until 2h")
+    def test_dash_with_for_keyword(self):
+        _, display, _, clean = self._e("focusing - for 2h")
         self.assertEqual(clean, "focusing")
         self.assertEqual(display, "expires in 2h")
 
-    # Bare trailing expiry (no keyword)
-    def test_bare_duration(self):
-        ts, display, cfg, clean = self._e("focusing 2h")
-        self.assertEqual(clean, "focusing")
-        self.assertEqual(display, "expires in 2h")
+    def test_timing_kept_in_text_and_expiry(self):
+        _, display, _, clean = self._e("lunch until 1pm - until 1pm")
+        self.assertEqual(clean, "lunch until 1pm")
+        self.assertIn("1:00 PM", display)
 
-    def test_bare_time(self):
-        _, display, _, clean = self._e("focusing 5pm")
-        self.assertEqual(clean, "focusing")
-        self.assertIn("5:00 PM", display)
+    def test_last_dash_wins(self):
+        _, display, _, clean = self._e("Acme - sync - 1h")
+        self.assertEqual(clean, "Acme - sync")
+        self.assertEqual(display, "expires in 1h")
 
-    def test_bare_int_le_23(self):
-        _, display, _, clean = self._e("meeting 5")
+    def test_dash_bare_int(self):
+        _, display, _, clean = self._e("meeting - 5")
         self.assertEqual(clean, "meeting")
         self.assertIn("expires at", display)
 
-    def test_bare_int_gt_23(self):
-        ts, display, cfg, clean = self._e("meeting 24")
-        self.assertEqual(clean, "meeting")
-        self.assertEqual(display, "expires in 24h")
-
-    def test_two_word_time(self):
-        _, display, _, clean = self._e("break 5 pm")
+    def test_dash_two_word_time(self):
+        _, display, _, clean = self._e("break - 5 pm")
         self.assertEqual(clean, "break")
         self.assertIn("5:00 PM", display)
+
+    # Trailing timing without a dash stays in the text
+    def test_back_by_time_kept(self):
+        ts, _, _, clean = self._e("at the doctor, back by 1pm")
+        self.assertEqual(ts, 0)
+        self.assertEqual(clean, "at the doctor, back by 1pm")
+
+    def test_until_without_dash_kept(self):
+        ts, _, _, clean = self._e("focusing until 5pm")
+        self.assertEqual(ts, 0)
+        self.assertEqual(clean, "focusing until 5pm")
+
+    def test_for_without_dash_kept(self):
+        ts, _, _, clean = self._e("focusing for 2h")
+        self.assertEqual(ts, 0)
+        self.assertEqual(clean, "focusing for 2h")
+
+    def test_bare_duration_kept(self):
+        ts, _, _, clean = self._e("focusing 2h")
+        self.assertEqual(ts, 0)
+        self.assertEqual(clean, "focusing 2h")
+
+    # A dash whose tail isn't an expiry is just text
+    def test_dash_non_expiry_kept(self):
+        ts, _, _, clean = self._e("Meeting - Acme")
+        self.assertEqual(ts, 0)
+        self.assertEqual(clean, "Meeting - Acme")
+
+    def test_unspaced_dash_kept(self):
+        ts, _, _, clean = self._e("re-do 2h")
+        self.assertEqual(ts, 0)
+        self.assertEqual(clean, "re-do 2h")
 
     # No expiry
     def test_no_expiry(self):
@@ -297,18 +323,18 @@ class TestParseCustomStatus(unittest.TestCase):
         self.assertEqual(emoji, ":brain:")
         self.assertEqual(text, "deep focus")
 
-    def test_emoji_with_bare_duration(self):
-        icon, emoji, text, ts, display, cfg = self._cs("🧠 deep focus 2h")
+    def test_emoji_with_dash_duration(self):
+        icon, emoji, text, ts, display, cfg = self._cs("🧠 deep focus - 2h")
         self.assertEqual(text, "deep focus")
         self.assertEqual(display, "expires in 2h")
 
     def test_emoji_with_for_duration(self):
-        _, _, text, _, display, _ = self._cs("🧠 deep focus for 2h")
+        _, _, text, _, display, _ = self._cs("🧠 deep focus - for 2h")
         self.assertEqual(text, "deep focus")
         self.assertEqual(display, "expires in 2h")
 
     def test_emoji_with_until_time(self):
-        _, _, text, _, display, _ = self._cs("🏋️ at the gym until 5pm")
+        _, _, text, _, display, _ = self._cs("🏋️ at the gym - until 5pm")
         self.assertEqual(text, "at the gym")
         self.assertIn("5:00 PM", display)
 
@@ -353,7 +379,7 @@ class TestExtractBracketTitle(unittest.TestCase):
         self.assertEqual(rest, ":brain: deep work 2h")
 
     def test_parse_custom_status_after_bracket_strip(self):
-        _, raw = wf.extract_bracket_title("[My Status] :headphones: focusing for 2h")
+        _, raw = wf.extract_bracket_title("[My Status] :headphones: focusing - for 2h")
         icon, emoji, text, ts, display, cfg = _with_time(wf.parse_custom_status, raw)
         self.assertEqual(icon, ":headphones:")
         self.assertEqual(emoji, ":headphones:")
